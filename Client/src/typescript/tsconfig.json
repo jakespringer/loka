@@ -1,0 +1,7 @@
+{
+    "compilerOptions": {
+        "outFile": "../loka.js",
+        "sourceMap": true,
+        "target":  "es5"
+    }
+}
