@@ -1,4 +1,4 @@
-module Loka.Core where
+module Loka where
 
 import Data.Maybe
 

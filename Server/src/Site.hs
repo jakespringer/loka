@@ -23,6 +23,7 @@ import           Snap.Util.FileServe
 import qualified Heist.Interpreted as I
 ------------------------------------------------------------------------------
 import           Application
+import           Api
 
 
 ------------------------------------------------------------------------------
@@ -85,4 +86,3 @@ app = makeSnaplet "app" "An snaplet example application." Nothing $ do
     addRoutes routes
     addAuthSplices h auth
     return $ App h s a
-
