@@ -4,52 +4,83 @@
 - Haskell
 - Cabal
 
+### To install
+(In development mode)
+```
+git clone <see git clone link>
+cd loka/Server
+cabal sandbox init
+cabal install
+```
+
 ### To run
 ```
 cabal run
 ```
 
-### Notes
-Algorithm to check the validity of a given state-action pair:
-- Subroutine "Check if tile allows move"
-  - check currentTile
-    - case Eyrie
-      - case Knight
-        = True
-      - other
-        = False
-    - case Castle
-      = True
-    - case Swamp
-      = True
-    -
-  - check previousTile
-    - case Swamp
-      = False
+### API
 
-- case Move
-  - case Knight
-    - Jump to target square
-    - Check if valid square
-      - Not occupied, not off-world
-    - Check if tile allows move
-  - case King
-    - Move to target square
-    - Check if valid square
-      - Not occupied, not off-world
-    - Check if not in check
-    - Check if the tile allows move
-  - case Queen
-    - Move one square at a time to target square; for each square
-      - Check if valid square
-        - Not occupied, not off-world
-      - Check if the tile allows move given the previous square occupied
-  - case Rook
-    - Same as Queen
-  - case Bishop
-    - Same as Queen
-  - case Pawn
-    - Move to target square
-    - Check if valid square
-      - Not occupied (pawn swap requires "swap" action), not off-world
-    - Check if not at end of the world (requires promote)
+Input
+```
+POST /game/<gamename>/action
+{
+  "actor": "<username/color?>",
+  "type": "QueenMove",
+  "piece": {
+    "x": 4,
+    "y": 3,
+    "color": "Red",
+    "pieceType": "Queen"
+  },
+  "direction": "UpRight",
+  "distance": 4,
+  "actionIndex": 24
+}
+```
+
+Output
+```
+Identical to GET /game/<gamename>/state
+```
+
+Errors
+```
+{
+  "status": "error",
+  "code": 1,
+  "message": "You are unauthenticated"
+}
+```
+```
+{
+  "status": "error",
+  "code": 2,
+  "message": "Invalid action"
+}
+```
+
+Input
+```GET /game/<gamename>/state```
+
+Output
+```
+{
+  "status": "success",
+  "actions": [
+    {
+      "actor": "<username/color?>",
+      "type": "QueenMove",
+      "piece": {
+        "x": 4,
+        "y": 3,
+        "color": "Red",
+        "pieceType": "Queen"
+      },
+      "direction": "UpRight",
+      "distance": 4,
+      "actionIndex": 0
+    },
+    ...
+  ]
+}
+```
