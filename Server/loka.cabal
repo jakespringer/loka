@@ -23,7 +23,7 @@ Flag old-base
   default: False
   manual: False
 
-Executable snap-app
+Executable loka
   hs-source-dirs: src
   main-is: Main.hs
 
