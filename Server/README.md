@@ -81,6 +81,29 @@ Output
       "actionIndex": 0
     },
     ...
+  ],
+  "staticState": [
+    ...,
+    {
+      "piece": {
+        "x": 3,
+        "y": 1,
+        "color": "Blue",
+        "pieceType": "Pawn"
+      },
+      "terrain": {
+        "x": 3,
+        "y": 1,
+        "terrainType": "MountainPass",
+        "mountainPassOrientation": "Horizontal"
+      }
+    },
+    {
+      "piece": null
+      "terrain": null
+    },
+    ... (.length = boardSideLength^2)
   ]
 }
 ```
+Note: for static state, alternatively, there could be a list of only the existing pieces and terrain tiles.
