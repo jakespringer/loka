@@ -18,6 +18,10 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
+site_key.txt
+users.json
+access.log
+error.log
 
 # Node
 logs
