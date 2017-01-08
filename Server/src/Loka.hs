@@ -1,21 +1,27 @@
+{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-name-shadowing
+    -fwarn-hi-shadowing -fno-warn-unused-matches
+ #-}
+
 module Loka where
 
 import Data.Maybe
 
+type Actor = String
+
 data Roll = Roll Integer
 
-data PieceDirection = DirectionRight | DirectionUpRight | DirectionUp | DirectionUpLeft | DirectionLeft | DirectionDownLeft | DirectionDown | DirectionDownRight
+data PieceDirection = DirectionRight | DirectionUpRight | DirectionUp | DirectionUpLeft | DirectionLeft | DirectionDownLeft | DirectionDown | DirectionDownRight deriving (Show)
 
 data KnightDirection = KnightDirectionUpRight | KnightDirectionUpLeft
                      | KnightDirectionRightUp | KnightDirectionRightDown
                      | KnightDirectionLeftUp | KnightDirectionLeftDown
-                     | KnightDirectionDownRight | KnightDirectionDownLeft
+                     | KnightDirectionDownRight | KnightDirectionDownLeft deriving (Show)
 
-data MountainPassDirection = MountainPassDirectionHorizontal | MountainPassDirectionVertical
+data MountainPassDirection = MountainPassDirectionHorizontal | MountainPassDirectionVertical deriving (Show)
 
-data PieceType = King | Queen | Rook | Bishop | Knight | Pawn
+data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Show)
 
-data PieceColor = Red | Green | Blue | Yellow
+data PieceColor = Red | Green | Blue | Yellow deriving (Show)
 
 data PieceMove = KingMove { direction :: PieceDirection }
                | QueenMove { direction :: PieceDirection, distance :: Integer }
@@ -29,7 +35,7 @@ data Piece = Piece { pieceX :: Integer
                    , pieceType :: PieceType
                    , color :: PieceColor }
 
-data TerrainType = Eyrie | Castle | Swamp | MountainPass MountainPassDirection | Forest | Lake | StoneCircle | Portal | None
+data TerrainType = Eyrie | Castle | Swamp | MountainPass MountainPassDirection | Forest | Lake | StoneCircle | Portal | None deriving (Show)
 
 data Terrain = Terrain { terrainX :: Integer
                        , terrainY :: Integer
@@ -46,7 +52,7 @@ data GameMove = Noop
                             , defenderRoll :: Roll }
               | MultiMove [GameMove]
 
-type GameState = [GameMove]
+type GameState = [(Actor, GameMove)]
 
 type StaticSquare = (Maybe (PieceType, PieceColor), TerrainType)
 type StaticGameState = [StaticSquare]
@@ -100,11 +106,6 @@ toCoordinates DirectionDownLeft = (-1, -1)
 toCoordinates DirectionDown = (0, -1)
 toCoordinates DirectionDownRight = (1, -1)
 
--- KnightDirectionUpRight | KnightDirectionUpLeft
---                      | KnightDirectionRightRight | KnightDirectionRightLeft
---                      | KnightDirectionLeftRight | KnightDirectionLeftLeft
---                      | KnightDirectionDownRight | KnightDirectionDownLeft
-
 toKnightCoordinates :: KnightDirection -> (Integer, Integer)
 toKnightCoordinates KnightDirectionUpRight = (1, 2)
 toKnightCoordinates KnightDirectionUpLeft = (-1, 2)
@@ -140,13 +141,19 @@ canTraverseBoard state (Piece x y pieceType _) direction distance =
   all canEnterSquare $ zipStraightLineOffsetList direction distance (x, y)
     where
       canEnterSquare ((squareX, squareY), Just (previousSquareX, previousSquareY)) =
-        currentlyInBoardBounds && canEnterCurrentSquare && canEnterCurrentTerrain
-          where
-            currentlyInBoardBounds = inBoardBounds squareX squareY
-            currentTerrainType = terrainAt state squareX squareY
-            previousTerrainType = terrainAt state previousSquareX previousSquareY
-            canEnterCurrentTerrain = canEnterTerrain currentTerrainType pieceType direction (Just previousTerrainType)
-            canEnterCurrentSquare = isNothing $ pieceAt state squareX squareY
+        (currentlyInBoardBounds squareX squareY)
+        && (canEnterCurrentSquare squareX squareY)
+        && canEnterCurrentTerrain (currentTerrainType squareX squareY) (Just (previousTerrainType previousSquareX previousSquareY))
+      canEnterSquare ((squareX, squareY), _) =
+        (currentlyInBoardBounds squareX squareY)
+        && (canEnterCurrentSquare squareX squareY)
+        && canEnterCurrentTerrain (currentTerrainType squareX squareY) Nothing
+
+      currentlyInBoardBounds squareX squareY = inBoardBounds squareX squareY
+      currentTerrainType squareX squareY = terrainAt state squareX squareY
+      previousTerrainType previousSquareX previousSquareY = terrainAt state previousSquareX previousSquareY
+      canEnterCurrentTerrain curr prev = canEnterTerrain curr pieceType direction prev
+      canEnterCurrentSquare squareX squareY = isNothing $ pieceAt state squareX squareY
 
 -- canEnter :: terrainToEnter -> pieceType -> incomingDirection -> previousSquare
 canEnterTerrain :: TerrainType -> PieceType -> PieceDirection -> Maybe TerrainType -> Bool
@@ -168,17 +175,6 @@ canEnterTerrain StoneCircle Rook _ _ = True
 canEnterTerrain StoneCircle _ _ _  = False
 canEnterTerrain Portal _ _ _ = True
 canEnterTerrain None _ _ _ = True
-
--- Noop
--- | PlacePiece { piece :: Piece }
--- | PlaceTerrain { terrain :: Terrain }
--- | MovePiece { piece :: Piece, move :: PieceMove }
--- | AttackPiece { attacker :: Piece
---               , defender :: Piece
---               , move :: PieceMove
---               , attackerRoll :: Roll
---               , defenderRoll :: Roll }
--- | MultiMove [GameMove]
 
 checkValidMove :: StaticGameState -> GameMove -> Bool
 checkValidMove _ Noop = True
@@ -224,4 +220,6 @@ checkValidMove state (MovePiece PawnMove (Piece x y Pawn color)) =
   canTraverseBoard state (Piece x y Pawn color) (pawnColorToDirection color) 1
 
 checkValidMove _ _ = False
--- End helper function
+
+collapseGameState :: GameState -> StaticGameState
+collapseGameState _ = undefined
