@@ -2,16 +2,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 {-
-
 NOTE: Don't modify this file unless you know what you are doing.  If you are
 new to snap, start with Site.hs and Application.hs.  This file contains
 boilerplate needed for dynamic reloading and is not meant for general
 consumption.
-
 Occasionally if we modify the way the dynamic reloader works and you want to
 upgrade, you might have to swap out this file for a newer version.  But in
 most cases you'll never need to modify this code.
-
 -}
 module Main where
 
@@ -74,7 +71,7 @@ main = do
     -- directories, those are picked up automatically by the splice.
     (conf, site, cleanup) <- $(loadSnapTH [| getConf |]
                                           'getActions
-                                          ["snaplets/heist/templates"])
+                                          [])
 
     _ <- try $ httpServe conf site :: IO (Either SomeException ())
     cleanup

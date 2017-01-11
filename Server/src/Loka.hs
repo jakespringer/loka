@@ -8,38 +8,38 @@ import Data.Maybe
 
 type Actor = String
 
-data Roll = Roll Integer
+data Roll = Roll Integer deriving (Show, Read)
 
-data PieceDirection = DirectionRight | DirectionUpRight | DirectionUp | DirectionUpLeft | DirectionLeft | DirectionDownLeft | DirectionDown | DirectionDownRight deriving (Show)
+data PieceDirection = DirectionRight | DirectionUpRight | DirectionUp | DirectionUpLeft | DirectionLeft | DirectionDownLeft | DirectionDown | DirectionDownRight deriving (Show, Read)
 
 data KnightDirection = KnightDirectionUpRight | KnightDirectionUpLeft
                      | KnightDirectionRightUp | KnightDirectionRightDown
                      | KnightDirectionLeftUp | KnightDirectionLeftDown
-                     | KnightDirectionDownRight | KnightDirectionDownLeft deriving (Show)
+                     | KnightDirectionDownRight | KnightDirectionDownLeft deriving (Show, Read)
 
-data MountainPassDirection = MountainPassDirectionHorizontal | MountainPassDirectionVertical deriving (Show)
+data MountainPassDirection = MountainPassDirectionHorizontal | MountainPassDirectionVertical deriving (Show, Read)
 
-data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Show)
+data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Show, Read)
 
-data PieceColor = Red | Green | Blue | Yellow deriving (Show)
+data PieceColor = Red | Green | Blue | Yellow deriving (Show, Read)
 
 data PieceMove = KingMove { direction :: PieceDirection }
                | QueenMove { direction :: PieceDirection, distance :: Integer }
                | RookMove { direction :: PieceDirection, distance :: Integer }
                | BishopMove { direction :: PieceDirection, distance :: Integer }
                | KnightMove { knightDirection :: KnightDirection }
-               | PawnMove
+               | PawnMove deriving (Show, Read)
 
 data Piece = Piece { pieceX :: Integer
                    , pieceY :: Integer
                    , pieceType :: PieceType
-                   , color :: PieceColor }
+                   , color :: PieceColor } deriving (Show, Read)
 
-data TerrainType = Eyrie | Castle | Swamp | MountainPass MountainPassDirection | Forest | Lake | StoneCircle | Portal | None deriving (Show)
+data TerrainType = Eyrie | Castle | Swamp | MountainPass MountainPassDirection | Forest | Lake | StoneCircle | Portal | None deriving (Show, Read)
 
 data Terrain = Terrain { terrainX :: Integer
                        , terrainY :: Integer
-                       , terrainType :: TerrainType }
+                       , terrainType :: TerrainType } deriving (Show, Read)
 
 data GameMove = Noop
               | PlacePiece { piece :: Piece }
@@ -50,7 +50,7 @@ data GameMove = Noop
                             , defender :: Piece
                             , attackerRoll :: Roll
                             , defenderRoll :: Roll }
-              | MultiMove [GameMove]
+              | MultiMove [GameMove] deriving (Show, Read)
 
 type GameState = [(Actor, GameMove)]
 
