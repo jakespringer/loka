@@ -139,7 +139,18 @@ jsonifyGameMove _ _ _ = "{}"
 jsonifyValidGameState :: GameState -> String
 jsonifyValidGameState state = removeSpaces json
   where
-    json = "["
-      ++   (concat $ intersperse "," $ map jsonifyGameMoveHelper $ zip state [0..(length state - 1)])
-      ++ "]"
+    json = "{"
+      ++   "\"status\" : \"success\","
+      ++   "\"actions\" : ["
+      ++     (concat $ intersperse "," $ map jsonifyGameMoveHelper $ zip state [0..(length state - 1)])
+      ++   "]"
+      ++ "}"
     jsonifyGameMoveHelper ((actor, move), index) = jsonifyGameMove actor move $ fromIntegral index
+
+jsonifyInvalidGameState :: String -> String
+jsonifyInvalidGameState errorMessage = removeSpaces json
+  where
+    json = "{"
+      ++   "\"status\" : \"error\","
+      ++   "\"message\" : \"" ++ errorMessage ++ "\""
+      ++ "}"

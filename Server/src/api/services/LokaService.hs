@@ -6,13 +6,11 @@ module Api.Services.LokaService where
 
 import Control.Lens
 import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Control.Applicative
 import Snap.Core
 import Snap.Snaplet
 import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as LB
 
-import Api.Types
 import Api.Database
 
 data LokaService = LokaService
@@ -20,13 +18,19 @@ data LokaService = LokaService
 makeLenses ''LokaService
 
 lokaRoutes :: [(B.ByteString, Handler b LokaService ())]
-lokaRoutes = [("/game/:gameName/state", method GET gameStateHandler)]
+lokaRoutes = [("/game/:gameName/state", method GET gameStateHandler),
+              ("/game/:gameName/action", method POST gameActionHandler)]
 
 gameStateHandler :: Handler b LokaService ()
 gameStateHandler = do
   gameName <- getParam "gameName"
   maybe (writeBS "You must supply a game name")
          writeBS gameName
+  return ()
+
+gameActionHandler :: Handler b LokaService ()
+gameActionHandler = do
+  body <- readRequestBody 2048
   return ()
 
 lokaServiceInit :: SnapletInit b LokaService

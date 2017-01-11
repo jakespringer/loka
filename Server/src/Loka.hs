@@ -1,3 +1,7 @@
+-- todo: Separate this into Types.hs and something else; this is too much code for one file
+-- additionally, mark valid moves as valid with a type
+-- data Valid a = Valid a where Valid a specifies a Valid move
+
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-name-shadowing
     -fwarn-hi-shadowing -fno-warn-unused-matches
  #-}
@@ -52,7 +56,9 @@ data GameMove = Noop
                             , defenderRoll :: Roll }
               | MultiMove [GameMove] deriving (Show, Read)
 
-type GameState = [(Actor, GameMove)]
+
+type UnitAction = (Actor, GameMove)
+type GameState = [UnitAction]
 
 type StaticSquare = (Maybe (PieceType, PieceColor), TerrainType)
 type StaticGameState = [StaticSquare]
@@ -76,10 +82,22 @@ indexTerrain terrain = index2d (terrainX terrain) (terrainY terrain) boardSize
 
 inBoardBounds :: Integer -> Integer -> Bool
 inBoardBounds x y = 0 <= index && index < (boardSize * boardSize)
+                 && (cornerSize < x && x < (boardSize - cornerSize)
+                  || cornerSize < y && y < (boardSize - cornerSize))
   where index = toInteger $ index2d x y boardSize
 
 gameElementAt :: StaticGameState -> Integer -> Integer -> StaticSquare
 gameElementAt state x y = state !! index2d x y boardSize
+
+replaceElementAt :: Integer -> Integer -> a -> [a] -> [a]
+replaceElementAt x y el xs = (take (fromIntegral n) xs) ++ [el] ++ (drop (n+1) xs)
+  where n = index2d x y boardSize
+
+replacePieceAt :: Integer -> Integer -> Maybe (PieceType, PieceColor) -> StaticGameState -> StaticGameState
+replacePieceAt x y el xs = replaceElementAt x y (el, terrainAt xs x y) xs
+
+replaceTerrainAt :: Integer -> Integer -> TerrainType -> StaticGameState -> StaticGameState
+replaceTerrainAt x y el xs = replaceElementAt x y (pieceAt xs x y, el) xs
 
 pieceAt :: StaticGameState -> Integer -> Integer -> Maybe (PieceType, PieceColor)
 pieceAt state x y = case gameElementAt state x y of
@@ -95,6 +113,12 @@ maybeElem arr index = if 0 < index && index < length arr
 
 tupleMap :: (a -> b) -> (a, a) -> (b, b)
 tupleMap f (x, y) = (f x, f y)
+
+tuplePlus :: (Num a) => (a, a) -> (a, a) -> (a, a)
+tuplePlus (one, two) (three, four) = (one+three, two+four)
+
+tupleTimes :: (Num a) => a -> (a, a) -> (a, a)
+tupleTimes a (x, y) = (a*x, a*y)
 
 toCoordinates :: PieceDirection -> (Integer, Integer)
 toCoordinates DirectionRight = (1, 0)
@@ -184,7 +208,7 @@ checkValidMove state (PlacePiece piece) = case gameElementAt state (pieceX piece
   _ -> False
 
 checkValidMove state (PlaceTerrain (Terrain x y _)) = case gameElementAt state x y of
-  (_, None) -> True
+  (_, None) -> inBoardBounds x y
   _ -> False
 
 checkValidMove state (MovePiece (KingMove direction) (Piece x y King color)) =
@@ -221,5 +245,61 @@ checkValidMove state (MovePiece PawnMove (Piece x y Pawn color)) =
 
 checkValidMove _ _ = False
 
+initialStaticState :: StaticGameState
+initialStaticState = take (fromIntegral (boardSize * boardSize)) $ repeat (Nothing, None)
+
 collapseGameState :: GameState -> StaticGameState
-collapseGameState _ = undefined
+collapseGameState xs = foldl collapseSingleState initialStaticState $ map removeLambda xs
+  where
+    removeLambda (_, move) = move
+
+collapseSingleState :: StaticGameState -> GameMove -> StaticGameState
+collapseSingleState state Noop = state
+
+collapseSingleState state (PlacePiece (Piece x y ty col)) = replacePieceAt x y (Just (ty, col)) state
+
+collapseSingleState state (PlaceTerrain (Terrain x y ty)) = replaceTerrainAt x y ty state
+
+collapseSingleState state (MovePiece (KingMove direction) (Piece x y King color)) =
+  replacePieceAt xPrime yPrime (Just (King, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` toCoordinates direction
+
+collapseSingleState state (MovePiece (QueenMove direction distance) (Piece x y Queen color)) =
+  replacePieceAt xPrime yPrime (Just (Queen, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` (distance `tupleTimes` toCoordinates direction)
+
+collapseSingleState state (MovePiece (RookMove direction distance) (Piece x y Rook color)) =
+  replacePieceAt xPrime yPrime (Just (Rook, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` (distance `tupleTimes` toCoordinates direction)
+
+collapseSingleState state (MovePiece (BishopMove direction distance) (Piece x y Bishop color)) =
+  replacePieceAt xPrime yPrime (Just (Bishop, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` (distance `tupleTimes` toCoordinates direction)
+
+collapseSingleState state (MovePiece (KnightMove knightDirection) (Piece x y Knight color)) =
+  replacePieceAt xPrime yPrime (Just (Knight, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` toKnightCoordinates knightDirection
+
+collapseSingleState state (MovePiece PawnMove (Piece x y Pawn color)) =
+  replacePieceAt xPrime yPrime (Just (Pawn, color)) $
+  replacePieceAt x y Nothing state
+    where
+      (xPrime, yPrime) = (x, y) `tuplePlus` (toCoordinates $ pawnColorToDirection color)
+
+validMove :: GameMove -> GameState -> Bool
+validMove move state = checkValidMove (collapseGameState state) move
+
+makeMove :: Actor -> GameMove -> GameState -> Maybe GameState
+makeMove actor move state
+  | validMove move state = Just ((actor, move):state)
+  | otherwise = Nothing
