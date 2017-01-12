@@ -2,6 +2,7 @@
 
 module Api.Database where
 
+------------------------------------------------------------------------------
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
@@ -15,14 +16,22 @@ import GHC.Int
 import Loka
 import Types
 
+------------------------------------------------------------------------------
 data GamestateField = GamestateField Int64 Int64 Text Text
 
 instance FromRow GamestateField where
   fromRow = GamestateField <$> field <*> field <*> field <*> field
 
+------------------------------------------------------------------------------
+-- | Specifies the default parameters for the PostgreSQL connection for this
+-- application. This is just for quick prototyping. TODO: Move this to a config
+-- file.
 postgresqlParameters :: B.ByteString
 postgresqlParameters = "host='localhost' port=5432 dbname='loka'"
 
+------------------------------------------------------------------------------
+-- | Creates the Loka table on the PostgreSQL database. NOTE: The database must
+-- have already been created with the SQL command `CREATE DATABASE loka;`
 initializeLokaDatabase :: IO ()
 initializeLokaDatabase = do
   conn <- connectPostgreSQL postgresqlParameters
@@ -37,12 +46,17 @@ initializeLokaDatabase = do
     \);")
   return ()
 
+------------------------------------------------------------------------------
+-- | Returns the current game state from the PostgreSQL database for a given
+-- game id.
 getGamestate :: Integer -> IO (GameState)
 getGamestate game = do
   conn <- connectPostgreSQL postgresqlParameters
   fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GamestateField]
   return $ fieldsGamestate fields
 
+------------------------------------------------------------------------------
+-- | Adds an action to the PostgreSQL database.
 addAction :: Integer -> Actor -> GameMove -> IO GameState
 addAction game actor move = do
   conn <- connectPostgreSQL postgresqlParameters
@@ -57,6 +71,9 @@ addAction game actor move = do
       (pack (show move)))
   return ((actor, move) : (fieldsGamestate fields))
 
+------------------------------------------------------------------------------
+-- | Utility function to convert a list of GamestateField (as returned by the
+-- database) into a game state that can be used by the rest of the code.
 fieldsGamestate :: [GamestateField] -> GameState
 fieldsGamestate fields = map fieldState fields
   where

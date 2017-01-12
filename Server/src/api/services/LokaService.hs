@@ -4,6 +4,7 @@
 
 module Api.Services.LokaService where
 
+------------------------------------------------------------------------------
 import Data.Aeson
 import Data.ByteString hiding (map, length)
 import Control.Lens
@@ -19,14 +20,20 @@ import Loka
 import Api.Database
 import Jsonify
 
+------------------------------------------------------------------------------
 data LokaService = LokaService
 
 makeLenses ''LokaService
 
+------------------------------------------------------------------------------
 lokaRoutes :: [(B.ByteString, Handler b LokaService ())]
 lokaRoutes = [("/game/:gameName/state", method GET gameStateHandler),
               ("/game/:gameName/action", method POST gameActionHandler)]
 
+------------------------------------------------------------------------------
+-- | Handles and responds to a request to read the game state. This will read
+-- the state from the PostgreSQL database, format it to JSON, and send it back
+-- to the client.
 gameStateHandler :: Handler b LokaService ()
 gameStateHandler = do
   gameName <- getParam "gameName"
@@ -46,9 +53,14 @@ gameStateHandler = do
             where
               jsonGameState (actor, move) = JsonAction actor move
 
--- todo: rewrite this function to be pretty (use Maybe monad)
+------------------------------------------------------------------------------
+-- | Handles and responds to a request to make an action. This takes in the
+-- current game state from the PostgreSQL database, adds an action if the
+-- action is valid, writes the new action the database, and then sends back
+-- the updated state.
 gameActionHandler :: Handler b LokaService ()
 gameActionHandler = do
+  -- todo: rewrite this function to be pretty (use Maybe monad)
   gameName <- getParam "gameName"
   case gameName of
     Nothing -> do
@@ -81,6 +93,8 @@ gameActionHandler = do
 
   return ()
 
+------------------------------------------------------------------------------
+-- | Called by Snap to create the Loka service snaplet
 lokaServiceInit :: SnapletInit b LokaService
 lokaServiceInit = makeSnaplet "loka" "Loka Service" Nothing $ do
   addRoutes lokaRoutes
