@@ -1,44 +1,46 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 ------------------------------------------------------------------------------
 module Types where
 
+import Data.Aeson
+import GHC.Generics
+
 ------------------------------------------------------------------------------
-data Roll = Roll Integer deriving (Show, Read)
+data Roll = Roll Integer deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 ------------------------------------------------------------------------------
 data PieceDirection = DirectionRight | DirectionUpRight | DirectionUp
   | DirectionUpLeft | DirectionLeft | DirectionDownLeft | DirectionDown
-  | DirectionDownRight deriving (Show, Read)
+  | DirectionDownRight deriving (Show, Read, Generic, ToJSON, FromJSON)
 data KnightDirection = KnightDirectionUpRight | KnightDirectionUpLeft
   | KnightDirectionRightUp | KnightDirectionRightDown
   | KnightDirectionLeftUp | KnightDirectionLeftDown
-  | KnightDirectionDownRight | KnightDirectionDownLeft deriving (Show, Read)
+  | KnightDirectionDownRight | KnightDirectionDownLeft deriving (Show, Read, Generic, ToJSON, FromJSON)
 data MountainPassDirection = MountainPassDirectionHorizontal
-  | MountainPassDirectionVertical deriving (Show, Read)
+  | MountainPassDirectionVertical deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 ------------------------------------------------------------------------------
 data PieceType = King | Queen | Rook | Bishop | Knight | Pawn
-  deriving (Show, Read)
-data PieceColor = Red | Green | Blue | Yellow deriving (Show, Read)
+  deriving (Show, Read, Generic, ToJSON, FromJSON)
+data PieceColor = Red | Green | Blue | Yellow deriving (Show, Read, Generic, ToJSON, FromJSON)
 data PieceMove = KingMove { direction :: PieceDirection }
   | QueenMove { direction :: PieceDirection, distance :: Integer }
   | RookMove { direction :: PieceDirection, distance :: Integer }
   | BishopMove { direction :: PieceDirection, distance :: Integer }
   | KnightMove { knightDirection :: KnightDirection }
-  | PawnMove deriving (Show, Read)
+  | PawnMove deriving (Show, Read, Generic, ToJSON, FromJSON)
 data Piece = Piece { pieceX :: Integer
   , pieceY :: Integer
   , pieceType :: PieceType
-  , color :: PieceColor } deriving (Show, Read)
+  , color :: PieceColor } deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 ------------------------------------------------------------------------------
 data TerrainType = Eyrie | Castle | Swamp | MountainPass MountainPassDirection
-  | Forest | Lake | StoneCircle | Portal deriving (Show, Read)
+  | Forest | Lake | StoneCircle | Portal deriving (Show, Read, Generic, ToJSON, FromJSON)
 data Terrain = Terrain { terrainX :: Integer
   , terrainY :: Integer
-  , terrainType :: TerrainType } deriving (Show, Read)
+  , terrainType :: TerrainType } deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 ------------------------------------------------------------------------------
 data GameMove = Noop
@@ -50,7 +52,7 @@ data GameMove = Noop
     , defender :: Piece
     , attackerRoll :: Roll
     , defenderRoll :: Roll }
-  | MultiMove [GameMove] deriving (Show, Read)
+  | MultiMove [GameMove] deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 ------------------------------------------------------------------------------
 type Actor = String

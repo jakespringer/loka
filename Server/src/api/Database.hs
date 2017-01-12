@@ -8,7 +8,7 @@ import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.Types
 import qualified Data.ByteString as B
 import Data.String
-import Data.Text hiding (map, length)
+import Data.Text hiding (map, length, reverse)
 import Data.Maybe
 import GHC.Int
 
@@ -40,13 +40,13 @@ initializeLokaDatabase = do
 getGamestate :: Integer -> IO (GameState)
 getGamestate game = do
   conn <- connectPostgreSQL postgresqlParameters
-  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index;" (Only game) :: IO [GamestateField]
+  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GamestateField]
   return $ fieldsGamestate fields
 
 addAction :: Integer -> Actor -> GameMove -> IO GameState
 addAction game actor move = do
   conn <- connectPostgreSQL postgresqlParameters
-  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index;" (Only game) :: IO [GamestateField]
+  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GamestateField]
   execute conn (Query $ fromString $
        "INSERT INTO gamestate \
           \(game, index, actor, action) \
