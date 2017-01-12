@@ -2,11 +2,12 @@
     -fwarn-hi-shadowing -fno-warn-unused-matches
  #-}
 
-module Api where
+module Jsonify where
 
 import Data.List
 
 import Loka
+import Types
 
 removeSpaces :: String -> String
 removeSpaces str = filter ((/=) ' ') str
