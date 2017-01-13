@@ -14,20 +14,16 @@ import Types
 
 ------------------------------------------------------------------------------
 -- | Returns a Just GameState with the appended
-appendGameMove :: Actor -> GameMove -> Maybe GameState -> Maybe GameState
-appendGameMove _ _ Nothing = Nothing
-appendGameMove actor move (Just state) = case collapseGameState (Just state) of
-  Nothing -> Nothing
-  Just static -> if checkMove move static
-    then Just ((actor, move) : state)
-    else Nothing
+appendGameMove :: Actor -> GameMove -> GameState -> Maybe GameState
+appendGameMove actor move state
+  | checkMove move (collapseGameState state) = Just ((actor, move) : state)
+  | otherwise = Nothing
 
 ------------------------------------------------------------------------------
 -- | Collapses the GameState as a list of actions into a list of pieces in
 -- their final location.
-collapseGameState :: Maybe GameState -> Maybe CollapsedGameState
-collapseGameState Nothing = Nothing
-collapseGameState (Just state) = Just $ foldl collapseSingleState [] $ map (\(_, move) -> move) state
+collapseGameState :: GameState -> CollapsedGameState
+collapseGameState state = foldl collapseSingleState [] $ map (\(_, move) -> move) state
   where
     xyPieceNotEquals xCheck yCheck (Left (Piece x y _ _)) = x /= xCheck || y /= yCheck
     xyPieceNotEquals _ _ (Right _) = False

@@ -17,10 +17,10 @@ import Loka
 import Types
 
 ------------------------------------------------------------------------------
-data GamestateField = GamestateField Int64 Int64 Text Text
+data GameStateField = GameStateField Int64 Int64 Text Text
 
-instance FromRow GamestateField where
-  fromRow = GamestateField <$> field <*> field <*> field <*> field
+instance FromRow GameStateField where
+  fromRow = GameStateField <$> field <*> field <*> field <*> field
 
 ------------------------------------------------------------------------------
 -- | Specifies the default parameters for the PostgreSQL connection for this
@@ -49,18 +49,18 @@ initializeLokaDatabase = do
 ------------------------------------------------------------------------------
 -- | Returns the current game state from the PostgreSQL database for a given
 -- game id.
-getGamestate :: Integer -> IO (GameState)
-getGamestate game = do
+getGameState :: Integer -> IO (GameState)
+getGameState game = do
   conn <- connectPostgreSQL postgresqlParameters
-  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GamestateField]
-  return $ fieldsGamestate fields
+  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GameStateField]
+  return $ fieldsToGameState fields
 
 ------------------------------------------------------------------------------
 -- | Adds an action to the PostgreSQL database.
 addAction :: Integer -> Actor -> GameMove -> IO GameState
 addAction game actor move = do
   conn <- connectPostgreSQL postgresqlParameters
-  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GamestateField]
+  fields <- query conn "SELECT game, index, actor, action FROM gamestate WHERE game=(?) ORDER BY index DESC;" (Only game) :: IO [GameStateField]
   execute conn (Query $ fromString $
        "INSERT INTO gamestate \
           \(game, index, actor, action) \
@@ -69,12 +69,12 @@ addAction game actor move = do
       (fromIntegral (length fields)) :: Int64,
       (pack actor),
       (pack (show move)))
-  return ((actor, move) : (fieldsGamestate fields))
+  return ((actor, move) : (fieldsToGameState fields))
 
 ------------------------------------------------------------------------------
--- | Utility function to convert a list of GamestateField (as returned by the
+-- | Utility function to convert a list of GameStateField (as returned by the
 -- database) into a game state that can be used by the rest of the code.
-fieldsGamestate :: [GamestateField] -> GameState
-fieldsGamestate fields = map fieldState fields
+fieldsToGameState :: [GameStateField] -> GameState
+fieldsToGameState fields = map fieldState fields
   where
-    fieldState (GamestateField _ _ actor action) = (unpack actor, read (unpack action) :: GameMove)
+    fieldState (GameStateField _ _ actor action) = (unpack actor, read (unpack action) :: GameMove)

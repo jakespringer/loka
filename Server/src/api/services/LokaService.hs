@@ -30,9 +30,9 @@ makeLenses ''LokaService
 
 ------------------------------------------------------------------------------
 lokaRoutes :: [(B.ByteString, Handler b LokaService ())]
-lokaRoutes = [("/game/:gameName/state", method GET gameStateHandler),
-              ("/game/:gameName/action", method POST gameActionHandler),
-              ("/game/:gameName/allmoves", method GET gameAllMovesHandler)]
+lokaRoutes = [("/game/:gameId/state", method GET gameStateHandler),
+              ("/game/:gameId/action", method POST gameActionHandler),
+              ("/game/:gameId/allmoves", method GET gameAllMovesHandler)]
 
 ------------------------------------------------------------------------------
 -- | Handles and responds to a request to read the game state. This will read
@@ -40,24 +40,12 @@ lokaRoutes = [("/game/:gameName/state", method GET gameStateHandler),
 -- to the client.
 gameStateHandler :: Handler b LokaService ()
 gameStateHandler = do
-  -- TODO: rewrite function to be pretty (Maybe monad)
-  gameName <- getParam "gameName"
-  case gameName of
-    Nothing -> do
-      writeBS "Invalid gameName"
-      return ()
-    Just name -> do
-      -- TODO: this does not throw an error on bad game name
-      gamestate <- liftIO . getGamestate $ ((read $ B.unpack name) :: Integer)
-      case collapseGameState (Just gamestate) of
-        Nothing -> do
-          writeBS "Invalid gameName"
-          return ()
-        Just staticState -> do
-          writeBS $ LB.toStrict $ encode $ (JsonGameState (map jsonGameState gamestate) staticState)
-          return ()
-            where
-              jsonGameState (actor, move) = JsonAction actor move
+  gameId <- getParam "gameId"
+  maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
+    gameState <- liftIO . getGameState $ ((read $ B.unpack gameIdValid) :: Integer)
+    writeBS $ LB.toStrict $ encode $ JsonGameState (map (uncurry JsonAction) gameState)
+      $ collapseGameState gameState)
+    gameId
 
 ------------------------------------------------------------------------------
 -- | Handles and responds to a request to make an action. This takes in the
@@ -66,69 +54,35 @@ gameStateHandler = do
 -- the updated state.
 gameActionHandler :: Handler b LokaService ()
 gameActionHandler = do
-  -- TODO: rewrite this function to be pretty (use Maybe monad)
-  gameName <- getParam "gameName"
-  case gameName of
-    Nothing -> do
-      writeBS "Invalid game name"
-      return ()
-    Just name -> do
-      -- TODO: this does not throw an error on bad game name
-      let gameId = ((read $ B.unpack name) :: Integer)
-      gamestate <- liftIO . getGamestate $ gameId
-      body <- readRequestBody 16384
-      case decode body of
-        Nothing -> do
-          writeBS "Invalid JSON"
-          return ()
-        Just (JsonAction actor move) -> do
-          case appendGameMove actor move (Just gamestate) of
-            Nothing -> do
-              writeBS "Invalid move"
-              return ()
-            Just newState -> do
-              liftIO $ addAction gameId actor move
-              case collapseGameState (Just newState) of
-                Nothing -> do
-                  writeBS "Could not collapse state"
-                  return ()
-                Just staticState -> do
-                  writeBS $ LB.toStrict $ encode $ (JsonGameState (map jsonGameState newState) staticState)
-                  return ()
-                    where
-                      jsonGameState (actor, move) = JsonAction actor move
+  gameId <- getParam "gameId"
+  maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
+    gameState <- liftIO . getGameState $ ((read $ B.unpack gameIdValid) :: Integer)
+    body <- readRequestBody 16384
+    maybe (writeBS $ jsonError "Parse error") (\action -> do
+      maybe (writeBS $ jsonError "Invalid game move") (\newGameState -> do
+        liftIO $ addAction ((read $ B.unpack gameIdValid) :: Integer)
+          (actor action)
+          (Jsonify.move action)
+        writeBS $ LB.toStrict $ encode $ JsonGameState (map
+          (uncurry JsonAction)
+          newGameState) $ collapseGameState gameState) $
+            appendGameMove (actor action) (Jsonify.move action) gameState)
+              $ decode body)
+                gameId
 
 ------------------------------------------------------------------------------
 -- | Handles and responds to a request to get all possible moves for a given
 -- color.
 gameAllMovesHandler :: Handler b LokaService ()
 gameAllMovesHandler = do
-  -- TODO: rewrite this function
-  gameName <- getParam "gameName"
-  case gameName of
-    Nothing -> do
-      writeBS "Invalid game name"
-      return ()
-    Just name -> do
-      colorParam <- getQueryParam "color"
-      -- TODO: this does not throw an error on bad game name
-      let gameId = ((read $ B.unpack name) :: Integer)
-      gamestate <- liftIO . getGamestate $ gameId
-      case colorParam of
-        Nothing -> do
-          writeBS "Invalid color"
-          return ()
-        Just colorParamValid -> do
-          let color = read (B.unpack colorParamValid) :: PieceColor
-          case collapseGameState (Just gamestate) of
-            Nothing -> do
-              writeBS "Invalid state"
-              return ()
-            Just collapsed -> do
-              writeBS $ LB.toStrict $ encode $ allPossibleMoves collapsed color
-              return ()
-
-
+  gameId <- getParam "gameId"
+  colorParam <- getQueryParam "color"
+  maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
+    maybe (writeBS $ jsonError "Invalid color") (\colorValid -> do
+      gameState <- liftIO . getGameState $ ((read $ B.unpack gameIdValid) :: Integer)
+      writeBS $ LB.toStrict $ encode $ allPossibleMoves
+        (collapseGameState gameState)
+        (read (B.unpack colorValid) :: PieceColor)) colorParam) gameId
 
 ------------------------------------------------------------------------------
 -- | Called by Snap to create the Loka service snaplet
