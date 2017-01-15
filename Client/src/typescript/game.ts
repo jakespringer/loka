@@ -32,21 +32,21 @@ getState();
 
 canvas.addEventListener("mousedown", function(e) {
     if (myTurn && selected == null) {
-        let s = getSquare(e.x, e.y);
+        let s = getSquare(e.clientX, e.clientY);
         if (getPieceOnSquare(s) != null) {
             selected = getPieceOnSquare(s);
-            selectedOffset = { x: e.x - s.getX(), y: e.y - s.getY() }
+            selectedOffset = { x: e.clientX - s.getX(), y: e.clientY - s.getY() }
         }
     }
 });
 
 canvas.addEventListener("mousemove", function(e) {
-    mousePos = { x: e.x, y: e.y };
+    mousePos = { x: e.clientX, y: e.clientY };
 });
 
 canvas.addEventListener("mouseup", function(e) {
     if (selected != null) {
-        let s = getSquare(e.x, e.y);
+        let s = getSquare(e.clientX, e.clientY);
         if (moveList.some(m => m.equals(new Move(selected.square, s)))) {
             myTurn = false;
             doMove(new Move(selected.square, s));
