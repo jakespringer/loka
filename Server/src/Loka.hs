@@ -23,15 +23,10 @@ appendGameMove actor move state
 -- | Collapses the GameState as a list of actions into a list of pieces in
 -- their final location.
 collapseGameState :: GameState -> CollapsedGameState
-collapseGameState state = foldl collapseSingleState [] $ map (\(_, move) -> move) state
+collapseGameState state = foldl collapseSingleState [] $ map (\(_, move) -> move) $ reverse state
   where
-    xyPieceNotEquals xCheck yCheck (Left (Piece x y _ _)) = x /= xCheck || y /= yCheck
-    xyPieceNotEquals _ _ (Right _) = False
-    xyTerrainNotEquals xCheck yCheck (Left (Terrain x y _)) = x /= xCheck || y /= yCheck
-    xyTerrainNotEquals _ _ (Right _) = False
-
     straightLineMove dir dist x y pieceType pieceColor state =
-      (Left $ uncurry Piece (pieceMoveCoordinates dir 1 (x, y)) pieceType pieceColor)
+      (Left $ uncurry Piece (pieceMoveCoordinates dir dist (x, y)) pieceType pieceColor)
         : (filter (not . xyPieceEquals x y) state)
 
     collapseSingleState :: CollapsedGameState -> GameMove -> CollapsedGameState
@@ -161,8 +156,8 @@ pawnColorDirection Yellow = DirectionLeft
 ------------------------------------------------------------------------------
 -- | Utility function that checks if a coordinate is in the board bounds.
 inBoardBounds :: Integer -> Integer -> Bool
-inBoardBounds x y = 0 <= x && x < 12 && 0 <= y && y < 12
-  && ((4 <= x && x < 9) || (4 <= y && y < 9))
+inBoardBounds x y = 0 <= x && x <= 11 && 0 <= y && y <= 11
+  && ((3 <= x && x <= 8) || (3 <= y && y <= 8))
 
 ------------------------------------------------------------------------------
 -- | Utility function that adds two vectors.

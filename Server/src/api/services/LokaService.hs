@@ -31,8 +31,8 @@ makeLenses ''LokaService
 ------------------------------------------------------------------------------
 lokaRoutes :: [(B.ByteString, Handler b LokaService ())]
 lokaRoutes = [("/game/:gameId/state", method GET gameStateHandler),
-              ("/game/:gameId/action", method POST gameActionHandler),
-              ("/game/:gameId/allmoves", method GET gameAllMovesHandler)]
+              ("/game/:gameId/allmoves", method GET gameAllMovesHandler),
+              ("/game/:gameId/doaction", method POST gameDoActionHandler)]
 
 ------------------------------------------------------------------------------
 -- | Handles and responds to a request to read the game state. This will read
@@ -40,6 +40,8 @@ lokaRoutes = [("/game/:gameId/state", method GET gameStateHandler),
 -- to the client.
 gameStateHandler :: Handler b LokaService ()
 gameStateHandler = do
+  modifyResponse $ setHeader "Access-Control-Allow-Origin" "*"
+  modifyResponse $ setHeader "Content-Type" "application/json"
   gameId <- getParam "gameId"
   maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
     gameState <- liftIO . getGameState $ ((read $ B.unpack gameIdValid) :: Integer)
@@ -52,29 +54,32 @@ gameStateHandler = do
 -- current game state from the PostgreSQL database, adds an action if the
 -- action is valid, writes the new action the database, and then sends back
 -- the updated state.
-gameActionHandler :: Handler b LokaService ()
-gameActionHandler = do
+gameDoActionHandler :: Handler b LokaService ()
+gameDoActionHandler = do
+  modifyResponse $ setHeader "Access-Control-Allow-Origin" "*"
+  modifyResponse $ setHeader "Content-Type" "application/json"
   gameId <- getParam "gameId"
   maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
     gameState <- liftIO . getGameState $ ((read $ B.unpack gameIdValid) :: Integer)
     body <- readRequestBody 16384
-    maybe (writeBS $ jsonError "Parse error") (\action -> do
+    maybe (writeBS $ jsonError "Unable to parse JSON") (\action -> do
       maybe (writeBS $ jsonError "Invalid game move") (\newGameState -> do
         liftIO $ addAction ((read $ B.unpack gameIdValid) :: Integer)
           (actor action)
           (Jsonify.move action)
-        writeBS $ LB.toStrict $ encode $ JsonGameState (map
-          (uncurry JsonAction)
-          newGameState) $ collapseGameState gameState) $
-            appendGameMove (actor action) (Jsonify.move action) gameState)
-              $ decode body)
-                gameId
+        writeBS $ LB.toStrict $ encode $ JsonGameState (map (uncurry JsonAction) newGameState)
+          $ collapseGameState newGameState)
+            $ appendGameMove (actor action) (Jsonify.move action) gameState)
+                $ decode body)
+                  gameId
 
 ------------------------------------------------------------------------------
 -- | Handles and responds to a request to get all possible moves for a given
 -- color.
 gameAllMovesHandler :: Handler b LokaService ()
 gameAllMovesHandler = do
+  modifyResponse $ setHeader "Access-Control-Allow-Origin" "*"
+  modifyResponse $ setHeader "Content-Type" "application/json"
   gameId <- getParam "gameId"
   colorParam <- getQueryParam "color"
   maybe (writeBS $ jsonError "Invalid game ID") (\gameIdValid -> do
