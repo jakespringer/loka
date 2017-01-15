@@ -30,30 +30,28 @@ collapseGameState state = foldl collapseSingleState [] $ map (\(_, move) -> move
     xyTerrainNotEquals xCheck yCheck (Left (Terrain x y _)) = x /= xCheck || y /= yCheck
     xyTerrainNotEquals _ _ (Right _) = False
 
+    straightLineMove dir dist x y pieceType pieceColor state =
+      (Left $ uncurry Piece (pieceMoveCoordinates dir 1 (x, y)) pieceType pieceColor)
+        : (filter (not . xyPieceEquals x y) state)
+
     collapseSingleState :: CollapsedGameState -> GameMove -> CollapsedGameState
-    collapseSingleState static Noop = static
-    collapseSingleState static (PlacePiece piece) = (Left piece) : static
-    collapseSingleState static (PlaceTerrain terrain) = (Right terrain) : static
-    collapseSingleState static (MovePiece (KingMove dir) (Piece x y ty col)) =
-      (Left $ uncurry Piece (pieceMoveCoordinates dir 1 (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static (MovePiece (QueenMove dir dist) (Piece x y ty col)) =
-      (Left $ uncurry Piece (pieceMoveCoordinates dir dist (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static (MovePiece (RookMove dir dist) (Piece x y ty col)) =
-      (Left $ uncurry Piece (pieceMoveCoordinates dir dist (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static (MovePiece (BishopMove dir dist) (Piece x y ty col)) =
-      (Left $ uncurry Piece (pieceMoveCoordinates dir dist (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static (MovePiece (KnightMove kDir) (Piece x y ty col)) =
-      (Left $ uncurry Piece (knightMoveCoordinates kDir (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static (MovePiece PawnMove (Piece x y ty col)) =
-      (Left $ uncurry Piece (pieceMoveCoordinates (pawnColorDirection col)
-        1 (x, y)) ty col)
-        : (filter (xyPieceNotEquals x y) static)
-    collapseSingleState static _ = static
+    collapseSingleState state Noop = state
+    collapseSingleState state (PlacePiece piece) = (Left piece) : state
+    collapseSingleState state (PlaceTerrain terrain) = (Right terrain) : state
+    collapseSingleState state (MovePiece (KingMove dir) (Piece x y pieceType pieceColor)) =
+      straightLineMove dir 1 x y pieceType pieceColor state
+    collapseSingleState state (MovePiece (QueenMove dir dist) (Piece x y pieceType pieceColor)) =
+      straightLineMove dir dist x y pieceType pieceColor state
+    collapseSingleState state (MovePiece (RookMove dir dist) (Piece x y pieceType pieceColor)) =
+      straightLineMove dir dist x y pieceType pieceColor state
+    collapseSingleState state (MovePiece (BishopMove dir dist) (Piece x y pieceType pieceColor)) =
+      straightLineMove dir dist x y pieceType pieceColor state
+    collapseSingleState state (MovePiece (KnightMove kDir) (Piece x y pieceType pieceColor)) =
+      (Left $ uncurry Piece (knightMoveCoordinates kDir (x, y)) pieceType pieceColor)
+        : (filter (not . xyPieceEquals x y) state)
+    collapseSingleState state (MovePiece PawnMove (Piece x y pieceType pieceColor)) =
+      straightLineMove (pawnColorDirection pieceColor) 1 x y pieceType pieceColor state
+    collapseSingleState state _ = state
 
 ------------------------------------------------------------------------------
 -- | Returns a list of all possible moves that can be made on the board for a
@@ -128,7 +126,7 @@ allPossiblePieceMoves state piece = filter (\x -> checkMove x state) $
 
 
 ------------------------------------------------------------------------------
--- | Utility function that converts (x, y) coordinates to new coordinates based
+-- | UtilipieceType function that converts (x, y) coordinates to new coordinates based
 -- on move made.
 pieceMoveCoordinates :: PieceDirection -> Integer -> (Integer, Integer)
   -> (Integer, Integer)
@@ -137,14 +135,14 @@ pieceMoveCoordinates dir dist coord = (dist
   `vecAdd` coord
 
 ------------------------------------------------------------------------------
--- | Utility function that converts (x, y) coordinates to new coordinates based
+-- | UtilipieceType function that converts (x, y) coordinates to new coordinates based
 -- on knight move made.
 knightMoveCoordinates :: KnightDirection -> (Integer, Integer) -> (Integer, Integer)
 knightMoveCoordinates kDir coord = coord
   `vecAdd` knightDirectionCoordinates kDir
 
 ------------------------------------------------------------------------------
--- | Utility function that converts a PieceDirection to its corresponding
+-- | UtilipieceType function that converts a PieceDirection to its corresponding
 -- coordinate change.
 pieceDirectionCoordinates :: PieceDirection -> (Integer, Integer)
 pieceDirectionCoordinates DirectionRight = (1, 0)
@@ -157,7 +155,7 @@ pieceDirectionCoordinates DirectionDown = (0, -1)
 pieceDirectionCoordinates DirectionDownRight = (1, -1)
 
 ------------------------------------------------------------------------------
--- | Utility function that converts a KnightDirection to its corresponding
+-- | UtilipieceType function that converts a KnightDirection to its corresponding
 -- coordinate change.
 knightDirectionCoordinates :: KnightDirection -> (Integer, Integer)
 knightDirectionCoordinates KnightDirectionUpRight = (1, 2)
@@ -170,7 +168,7 @@ knightDirectionCoordinates KnightDirectionLeftDown = (-2, -1)
 knightDirectionCoordinates KnightDirectionLeftUp = (-2, 1)
 
 ------------------------------------------------------------------------------
--- | Utility function that converts a PieceColor to its corresponding
+-- | UtilipieceType function that converts a PieceColor to its corresponding
 -- pawn direction.
 pawnColorDirection :: PieceColor -> PieceDirection
 pawnColorDirection Red = DirectionUp
@@ -179,23 +177,23 @@ pawnColorDirection Green = DirectionRight
 pawnColorDirection Yellow = DirectionLeft
 
 ------------------------------------------------------------------------------
--- | Utility function that checks if a coordinate is in the board bounds.
+-- | UtilipieceType function that checks if a coordinate is in the board bounds.
 inBoardBounds :: Integer -> Integer -> Bool
 inBoardBounds x y = 0 <= x && x < 12 && 0 <= y && y < 12
   && ((4 <= x && x < 9) || (4 <= y && y < 9))
 
 ------------------------------------------------------------------------------
--- | Utility function that adds two vectors.
+-- | UtilipieceType function that adds two vectors.
 vecAdd :: Num a => (a, a) -> (a, a) -> (a, a)
 vecAdd (x, y) (z, w) = (x+z, y+w)
 
 ------------------------------------------------------------------------------
--- | Utility function that multiplies a scalar and a vector.
+-- | UtilipieceType function that multiplies a scalar and a vector.
 vecTimes :: Num a => a -> (a, a) -> (a, a)
 vecTimes scalar (x, y) = (x*scalar, y*scalar)
 
 ------------------------------------------------------------------------------
--- | Utility function that checks if you can enter certain terrain.
+-- | UtilipieceType function that checks if you can enter certain terrain.
 canEnterTerrain :: TerrainType -> PieceType -> PieceDirection -> Bool
 canEnterTerrain Eyrie Knight _ = True
 canEnterTerrain Eyrie _ _ = False
@@ -215,14 +213,14 @@ canEnterTerrain StoneCircle _ _ = False
 canEnterTerrain Portal _ _ = True
 
 ------------------------------------------------------------------------------
--- | Utility function that checks if you can exit certain terrain.
+-- | UtilipieceType function that checks if you can exit certain terrain.
 canExitTerrain :: TerrainType -> PieceType -> PieceDirection -> Bool
 canExitTerrain Swamp _ _ = False
 canExitTerrain _ _ _ = True
 
 
 ------------------------------------------------------------------------------
--- | A number of utility functions that are used in checkMove
+-- | A number of utilipieceType functions that are used in checkMove
 
 -- Helper functions to check if a given piece/terrain has a given x,y
 xyPieceEquals xCheck yCheck (Left (Piece x y _ _)) = x == xCheck && y == yCheck
@@ -256,16 +254,16 @@ canExitSquare static pType dir x y = case find (xyTerrainEquals x y) static of
 
 -- Checks ifi a given piece can walk along every square in the given direction
 canTraverseBoard :: Piece -> PieceDirection -> Integer -> CollapsedGameState -> Bool
-canTraverseBoard (Piece x y ty _) dir dist static =
-  (all (uncurry (canEnterSquare static ty dir)) $ straightLine dir dist x y)
-    && (all (uncurry (canExitSquare static ty dir)) $ straightLine dir (dist - 1) x y)
+canTraverseBoard (Piece x y pieceType _) dir dist static =
+  (all (uncurry (canEnterSquare static pieceType dir)) $ straightLine dir dist x y)
+    && (all (uncurry (canExitSquare static pieceType dir)) $ straightLine dir (dist - 1) x y)
 
 ------------------------------------------------------------------------------
 -- | Checks if a given move is valid.
 checkMove :: GameMove -> CollapsedGameState -> Bool
 checkMove Noop _ = True
-checkMove (PlacePiece (Piece x y ty col)) state = all (not . xyPieceEquals x y) state
-checkMove (PlaceTerrain (Terrain x y ty)) state = all (not . xyTerrainEquals x y) state
+checkMove (PlacePiece (Piece x y pieceType col)) state = all (not . xyPieceEquals x y) state
+checkMove (PlaceTerrain (Terrain x y pieceType)) state = all (not . xyTerrainEquals x y) state
 checkMove (MovePiece (KingMove dir) (Piece x y King col)) state =
   canTraverseBoard (Piece x y King col) dir 1 state
 checkMove (MovePiece (QueenMove dir dist) (Piece x y Queen col)) state =
