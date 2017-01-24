@@ -25,8 +25,6 @@ var Piece = (function () {
         this.square = square;
         this.pieceType = pieceType;
         this.team = team;
-        this.image = new Image();
-        this.image.src = 'img/' + pieceType + '_' + team + '.png';
     }
     Piece.prototype.toString = function () {
         return 'Piece{' + this.square + ',' + this.pieceType + '' + this.team + '}';
@@ -39,6 +37,9 @@ var Square = (function () {
         this.y = y;
         this.terrain = terrain;
     }
+    Square.prototype.add = function (other) {
+        return new Square(this.x + other.x, this.y + other.y);
+    };
     Square.prototype.equals = function (other) {
         return other != null && this.x == other.x && this.y == other.y;
     };
@@ -48,15 +49,19 @@ var Square = (function () {
     Square.prototype.getY = function () {
         return this.y * squareSize;
     };
+    Square.prototype.multiply = function (c) {
+        return new Square(this.x * c, this.y * c);
+    };
     Square.prototype.toString = function () {
         return 'Square{' + this.x + ',' + this.y + '}';
     };
     return Square;
 }());
 var Move = (function () {
-    function Move(from, to) {
+    function Move(from, to, json) {
         this.from = from;
         this.to = to;
+        this.json = json;
     }
     Move.prototype.equals = function (other) {
         return this.from.equals(other.from) && this.to.equals(other.to);
@@ -80,6 +85,54 @@ var Die = (function () {
     }
     return Die;
 }());
+var sprites = {
+    red: load_colored_images(new Color(.7, 0, 0)),
+    green: load_colored_images(new Color(.3, 1, .3)),
+    blue: load_colored_images(new Color(0, 0, .7)),
+    yellow: load_colored_images(new Color(1, 1, 0))
+};
+function load_colored_images(color) {
+    var obj = {};
+    var _loop_1 = function (piece) {
+        var image = new Image();
+        image.src = 'img/' + piece + '_white.png';
+        image.onload = function () {
+            image.onload = function () { };
+            tintImage(image, color);
+            //            image
+            //            ctx.save();
+            //            ctx.drawImage(image, 0, 0);
+            //            ctx.globalCompositeOperation = 'multiply';
+            //            ctx.fillStyle = color;
+            //            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            //            ctx.restore();
+        };
+        obj[piece] = image;
+    };
+    for (var _i = 0, _a = ['bishop', 'king', 'knight', 'pawn', 'queen', 'rook']; _i < _a.length; _i++) {
+        var piece = _a[_i];
+        _loop_1(piece);
+    }
+    return obj;
+}
+function tintImage(imgElement, color) {
+    // create hidden canvas (using image dimensions)
+    var canvas = document.createElement('canvas');
+    canvas.width = imgElement.width;
+    canvas.height = imgElement.height;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(imgElement, 0, 0);
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var data = imageData.data;
+    for (var p = 0; p < data.length; p += 4) {
+        data[p] *= color.r;
+        data[p + 1] *= color.g;
+        data[p + 2] *= color.b;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    imgElement.src = canvas.toDataURL();
+}
+///<reference path='images.ts' />
 var canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 var ctx = canvas.getContext("2d");
@@ -115,10 +168,14 @@ canvas.addEventListener("mousemove", function (e) {
 });
 canvas.addEventListener("mouseup", function (e) {
     if (selected != null) {
-        var s_1 = getSquare(e.clientX, e.clientY);
-        if (moveList.some(function (m) { return m.equals(new Move(selected.square, s_1)); })) {
-            myTurn = false;
-            doMove(new Move(selected.square, s_1));
+        var s = getSquare(e.clientX, e.clientY);
+        for (var _i = 0, moveList_1 = moveList; _i < moveList_1.length; _i++) {
+            var m = moveList_1[_i];
+            if (m.equals(new Move(selected.square, s))) {
+                myTurn = false;
+                doAction({ actor: "bob", move: m.json });
+                break;
+            }
         }
         selected = null;
     }
@@ -134,23 +191,25 @@ function draw() {
             var c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
             ctx.fillStyle = c.toFillStyle();
             ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+            ctx.fillStyle = "red";
+            ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
         }
     }
     for (var _i = 0, pieceList_1 = pieceList; _i < pieceList_1.length; _i++) {
         var p = pieceList_1[_i];
         if (p != selected) {
-            ctx.drawImage(p.image, p.square.getX(), p.square.getY(), squareSize, squareSize);
+            ctx.drawImage(sprites[p.team][p.pieceType], p.square.getX(), p.square.getY(), squareSize, squareSize);
         }
     }
     if (selected != null) {
-        for (var _a = 0, moveList_1 = moveList; _a < moveList_1.length; _a++) {
-            var m = moveList_1[_a];
+        for (var _a = 0, moveList_2 = moveList; _a < moveList_2.length; _a++) {
+            var m = moveList_2[_a];
             if (m.from.equals(selected.square)) {
                 ctx.fillStyle = new Color(1, 1, 0, .5).toFillStyle();
                 ctx.fillRect(m.to.x * squareSize, m.to.y * squareSize, squareSize, squareSize);
             }
         }
-        ctx.drawImage(selected.image, mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
+        ctx.drawImage(sprites[selected.team][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
     }
 }
 // Misc utility functions
@@ -172,14 +231,6 @@ function getPieceOnSquare(s) {
     }
     return null;
 }
-function updateState(result) {
-    moveList = result.moveList;
-    pieceList = result.pieceList;
-    for (var _i = 0, _a = result.terrain; _i < _a.length; _i++) {
-        var s = _a[_i];
-        board[s.x][s.y] = s;
-    }
-}
 // The main loop
 function mainLoop() {
     draw();
@@ -187,23 +238,93 @@ function mainLoop() {
 }
 mainLoop();
 // All the queries that have to go to the server
-function doMove(m) {
+function doAction(a) {
     $.ajax({
-        url: "https://www.example.com",
-        data: { move: [m.from.x, m.from.y, m.to.x, m.to.y] },
-        success: updateState,
+        url: "http://loka.jakespringer.com:8438/game/2/doaction",
+        type: "POST",
+        data: JSON.stringify(a),
+        success: function (response) {
+            pieceList = response.static.map(function (json) {
+                return pieceJsonToPiece(json.Left);
+            });
+            getMoves();
+        }
     });
-    moveList = [new Move(m.to, m.from)];
-    pieceList = [new Piece(m.to, 'bishop', 'white')];
-    myTurn = true;
 }
 function getState() {
     $.ajax({
-        url: "https://www.example.com",
-        success: updateState,
+        url: "http://loka.jakespringer.com:8438/game/2/state",
+        success: function (response) {
+            pieceList = response.static.map(function (json) {
+                return pieceJsonToPiece(json.Left);
+            });
+        }
     });
-    moveList = [new Move(new Square(0, 0), new Square(2, 2))];
-    pieceList = [new Piece(board[0][0], 'bishop', 'white')];
-    myTurn = true;
+    pieceList = [new Piece(new Square(5, 0), 'rook', 'red'),
+        new Piece(new Square(1, 2), 'king', 'blue'),
+        new Piece(new Square(2, 5), 'bishop', 'green'),
+        new Piece(new Square(7, 4), 'knight', 'yellow')];
+    getMoves();
+}
+function getMoves() {
+    $.ajax({
+        url: "http://loka.jakespringer.com:8438/game/2/allmoves?color=Green",
+        success: function (response) {
+            moveList = response.map(moveJsonToMove);
+            myTurn = true;
+        }
+    });
+}
+// Utility functions
+function pieceJsonToPiece(pieceJson) {
+    return new Piece(new Square(pieceJson.pieceX, pieceJson.pieceY), pieceJson.pieceType, pieceJson.color);
+}
+function moveJsonToMove(moveJson) {
+    var s1 = new Square(moveJson.piece.pieceX, moveJson.piece.pieceY);
+    var d = new Square(0, 0);
+    switch (moveJson.piece.pieceType) {
+        case "Knight":
+            d = knightDirectionToSquare(moveJson.move.knightDirection);
+            break;
+        case "Pawn":
+            d = pawnDirectionToSquare(moveJson.piece.color);
+            break;
+        default:
+            d = directionToSquare(moveJson.move.direction).multiply(moveJson.move.distance);
+            break;
+    }
+    return new Move(s1, s1.add(d), moveJson);
+}
+function directionToSquare(direction) {
+    switch (direction) {
+        case "DirectionRight": return new Square(1, 0);
+        case "DirectionUpRight": return new Square(1, 1);
+        case "DirectionUp": return new Square(0, 1);
+        case "DirectionUpLeft": return new Square(-1, 1);
+        case "DirectionLeft": return new Square(-1, 0);
+        case "DirectionDownLeft": return new Square(-1, -1);
+        case "DirectionDown": return new Square(0, -1);
+        case "DirectionDownRight": return new Square(1, -1);
+    }
+}
+function knightDirectionToSquare(direction) {
+    switch (direction) {
+        case "KnightDirectionUpRight": return new Square(1, 2);
+        case "KnightDirectionUpLeft": return new Square(-1, 2);
+        case "KnightDirectionDownRight": return new Square(1, -2);
+        case "KnightDirectionDownLeft": return new Square(-1, -2);
+        case "KnightDirectionRightDown": return new Square(2, -1);
+        case "KnightDirectionRightUp": return new Square(2, 1);
+        case "KnightDirectionLeftDown": return new Square(-2, -1);
+        case "KnightDirectionLeftUp": return new Square(-2, 1);
+    }
+}
+function pawnDirectionToSquare(color) {
+    switch (color) {
+        case "Red": return new Square(0, 1);
+        case "Blue": return new Square(0, -1);
+        case "Green": return new Square(1, 0);
+        case "Yellow": return new Square(-1, 0);
+    }
 }
 //# sourceMappingURL=loka.js.map

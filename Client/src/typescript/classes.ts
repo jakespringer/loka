@@ -16,11 +16,7 @@ class Color {
 }
 
 class Piece {
-    image: HTMLImageElement;
-    constructor(public square: Square, public pieceType: string, public team: string) {
-        this.image = new Image();
-        this.image.src = 'img/' + pieceType + '_' + team + '.png';
-    }
+    constructor(public square: Square, public pieceType: string, public team: string) { }
     toString(): string {
         return 'Piece{' + this.square + ',' + this.pieceType + '' + this.team + '}';
     }
@@ -28,6 +24,9 @@ class Piece {
 
 class Square {
     constructor(public x: number, public y: number, public terrain?: string) { }
+    add(other: Square): Square {
+        return new Square(this.x + other.x, this.y + other.y);
+    }
     equals(other: Square): boolean {
         return other != null && this.x == other.x && this.y == other.y;
     }
@@ -37,13 +36,16 @@ class Square {
     getY(): number {
         return this.y * squareSize;
     }
+    multiply(c: number) {
+        return new Square(this.x * c, this.y * c);
+    }
     toString(): string {
         return 'Square{' + this.x + ',' + this.y + '}';
     }
 }
 
 class Move {
-    constructor(public from: Square, public to: Square) { }
+    constructor(public from: Square, public to: Square, public json?: MoveJSON) { }
     equals(other: Move): boolean {
         return this.from.equals(other.from) && this.to.equals(other.to);
     }

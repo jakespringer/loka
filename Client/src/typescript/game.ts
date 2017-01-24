@@ -1,3 +1,5 @@
+///<reference path='images.ts' />
+
 let canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 let ctx = canvas.getContext("2d");
@@ -47,9 +49,12 @@ canvas.addEventListener("mousemove", function(e) {
 canvas.addEventListener("mouseup", function(e) {
     if (selected != null) {
         let s = getSquare(e.clientX, e.clientY);
-        if (moveList.some(m => m.equals(new Move(selected.square, s)))) {
-            myTurn = false;
-            doMove(new Move(selected.square, s));
+        for (let m of moveList) {
+            if (m.equals(new Move(selected.square, s))) {
+                myTurn = false;
+                doAction({ actor: "bob", move: m.json });
+                break;
+            }
         }
         selected = null;
     }
@@ -70,12 +75,14 @@ function draw() {
             let c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
             ctx.fillStyle = c.toFillStyle();
             ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+            ctx.fillStyle = "red";
+            ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
         }
     }
 
     for (let p of pieceList) {
         if (p != selected) {
-            ctx.drawImage(p.image, p.square.getX(), p.square.getY(), squareSize, squareSize);
+            ctx.drawImage(sprites[p.team][p.pieceType], p.square.getX(), p.square.getY(), squareSize, squareSize);
         }
     }
     if (selected != null) {
@@ -85,7 +92,7 @@ function draw() {
                 ctx.fillRect(m.to.x * squareSize, m.to.y * squareSize, squareSize, squareSize);
             }
         }
-        ctx.drawImage(selected.image, mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
+        ctx.drawImage(sprites[selected.team][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
     }
 }
 
@@ -109,14 +116,6 @@ function getPieceOnSquare(s: Square): Piece {
         }
     }
     return null;
-}
-
-function updateState(result: { moveList: Move[], pieceList: Piece[], terrain: Square[] }) {
-    moveList = result.moveList;
-    pieceList = result.pieceList;
-    for (let s of result.terrain) {
-        board[s.x][s.y] = s;
-    }
 }
 
 // The main loop
