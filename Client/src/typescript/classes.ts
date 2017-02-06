@@ -15,15 +15,8 @@ class Color {
     }
 }
 
-class Piece {
-    constructor(public square: Square, public pieceType: string, public team: string) { }
-    toString(): string {
-        return 'Piece{' + this.square + ',' + this.pieceType + '' + this.team + '}';
-    }
-}
-
 class Square {
-    constructor(public x: number, public y: number, public terrain?: string) { }
+    constructor(public x: number, public y: number) { }
     add(other: Square): Square {
         return new Square(this.x + other.x, this.y + other.y);
     }
@@ -42,22 +35,4 @@ class Square {
     toString(): string {
         return 'Square{' + this.x + ',' + this.y + '}';
     }
-}
-
-class Move {
-    constructor(public from: Square, public to: Square, public json?: MoveJSON) { }
-    equals(other: Move): boolean {
-        return this.from.equals(other.from) && this.to.equals(other.to);
-    }
-    toString(): string {
-        return 'Move{' + this.from + ',' + this.to + '}'
-    }
-}
-
-class AttackResult {
-    constructor(public attackerDie: Die, public defenderDie: Die) { }
-}
-
-class Die {
-    constructor(public sides: number, public roll: number) { }
 }

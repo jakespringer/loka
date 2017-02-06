@@ -1,25 +1,18 @@
 let sprites: { [key: string]: { [key: string]: HTMLImageElement } } = {
-    red: load_colored_images(new Color(.7, 0, 0)),
-    green: load_colored_images(new Color(.3, 1, .3)),
-    blue: load_colored_images(new Color(0, 0, .7)),
-    yellow: load_colored_images(new Color(1, 1, 0))
+    Red: loadColoredImages(new Color(.7, 0, 0)),
+    Green: loadColoredImages(new Color(.6, 1, .6)),
+    Blue: loadColoredImages(new Color(.2, .2, .7)),
+    Yellow: loadColoredImages(new Color(1, 1, .5))
 };
 
-function load_colored_images(color: Color): { [key: string]: HTMLImageElement } {
+function loadColoredImages(color: Color): { [key: string]: HTMLImageElement } {
     let obj: { [key: string]: HTMLImageElement } = {};
-    for (let piece of ['bishop', 'king', 'knight', 'pawn', 'queen', 'rook']) {
+    for (let piece of ['Bishop', 'King', 'Knight', 'Pawn', 'Queen', 'Rook']) {
         let image = new Image();
         image.src = 'img/' + piece + '_white.png';
         image.onload = function() {
             image.onload = function() { };
             tintImage(image, color);
-            //            image
-            //            ctx.save();
-            //            ctx.drawImage(image, 0, 0);
-            //            ctx.globalCompositeOperation = 'multiply';
-            //            ctx.fillStyle = color;
-            //            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            //            ctx.restore();
         };
         obj[piece] = image;
     }

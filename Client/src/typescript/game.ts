@@ -1,24 +1,16 @@
 ///<reference path='images.ts' />
 
-let canvas = document.createElement("canvas");
+let canvas = document.createElement('canvas');
 document.body.appendChild(canvas);
-let ctx = canvas.getContext("2d");
+let ctx = canvas.getContext('2d');
 
 // The game state
 
-let moveList: Move[] = [];
-
 let pieceList: Piece[] = [];
+let terrainList: Terrain[] = [];
+let moveList: (MovePiece | AttackPiece)[] = [];
 
-let board: Square[][] = [];
 let boardSize = 12;
-for (let x = 0; x < boardSize; x++) {
-    board.push([]);
-    for (let y = 0; y < boardSize; y++) {
-        board[x].push(new Square(x, y));
-    }
-}
-
 let squareSize: number = getSquareSize();
 
 let selected: Piece = null;
@@ -32,7 +24,7 @@ getState();
 
 // Responding to user input
 
-canvas.addEventListener("mousedown", function(e) {
+canvas.addEventListener('mousedown', function(e) {
     if (myTurn && selected == null) {
         let s = getSquare(e.clientX, e.clientY);
         if (getPieceOnSquare(s) != null) {
@@ -42,17 +34,18 @@ canvas.addEventListener("mousedown", function(e) {
     }
 });
 
-canvas.addEventListener("mousemove", function(e) {
+canvas.addEventListener('mousemove', function(e) {
     mousePos = { x: e.clientX, y: e.clientY };
 });
 
-canvas.addEventListener("mouseup", function(e) {
+canvas.addEventListener('mouseup', function(e) {
     if (selected != null) {
         let s = getSquare(e.clientX, e.clientY);
         for (let m of moveList) {
-            if (m.equals(new Move(selected.square, s))) {
+            if (findMoveStartSquare(m).equals(new Square(selected.pieceX, selected.pieceY))
+                && findMoveTargetSquare(m).equals(s)) {
                 myTurn = false;
-                doAction({ actor: "bob", move: m.json });
+                doAction(m);
                 break;
             }
         }
@@ -75,25 +68,28 @@ function draw() {
             let c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
             ctx.fillStyle = c.toFillStyle();
             ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
-            ctx.fillStyle = "red";
+            ctx.fillStyle = 'red';
             ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
         }
     }
 
     for (let p of pieceList) {
         if (p != selected) {
-            ctx.drawImage(sprites[p.team][p.pieceType], p.square.getX(), p.square.getY(), squareSize, squareSize);
+            ctx.drawImage(sprites[p.color][p.pieceType], p.pieceX * squareSize, p.pieceY * squareSize, squareSize, squareSize);
         }
     }
     if (selected != null) {
         for (let m of moveList) {
-            if (m.from.equals(selected.square)) {
+            if (findMoveStartSquare(m).equals(new Square(selected.pieceX, selected.pieceY))) {
                 ctx.fillStyle = new Color(1, 1, 0, .5).toFillStyle();
-                ctx.fillRect(m.to.x * squareSize, m.to.y * squareSize, squareSize, squareSize);
+                ctx.fillRect(findMoveTargetSquare(m).getX(), findMoveTargetSquare(m).getY(), squareSize, squareSize);
             }
         }
-        ctx.drawImage(sprites[selected.team][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
+        ctx.drawImage(sprites[selected.color][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
     }
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(mousePos.x - 10, mousePos.y - 10, 10, 10);
 }
 
 // Misc utility functions
@@ -102,16 +98,16 @@ function getSquare(x: number, y: number): Square {
     if (Math.min(x, y) < 0 || Math.max(x, y) >= squareSize * boardSize) {
         return null;
     }
-    return board[Math.floor(x / squareSize)][Math.floor(y / squareSize)];
+    return new Square(Math.floor(x / squareSize), Math.floor(y / squareSize));
 }
 
 function getSquareSize(): number {
-    return Math.min(window.innerWidth, window.innerHeight) / 12;
+    return Math.min(canvas.width, canvas.height) / boardSize;
 }
 
 function getPieceOnSquare(s: Square): Piece {
     for (let p of pieceList) {
-        if (p.square == s) {
+        if (new Square(p.pieceX, p.pieceY) === s) {
             return p;
         }
     }

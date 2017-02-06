@@ -1,133 +1,138 @@
 // All the queries that have to go to the server
 
-function doAction(a: ActionJSON) {
+function doAction(m: GameMove) {
+    let a = { tag: 'JsonAction', actor: 'bob', move: m };
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/doaction",
-        type: "POST",
+        url: 'http://loka.jakespringer.com:8438/game/2/doaction',
+        type: 'POST',
         data: JSON.stringify(a),
-        success: function(response: GetStateJSON) {
-            pieceList = response.static.map(function(json) {
-                return pieceJsonToPiece(json.Left);
-            });
-            getMoves();
-        }
+        success: processGameState
     });
 }
 
 function getState() {
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/state",
-        success: function(response: GetStateJSON) {
-            pieceList = response.static.map(function(json) {
-                return pieceJsonToPiece(json.Left);
-            });
-        }
+        url: 'http://loka.jakespringer.com:8438/game/2/state',
+        success: processGameState
     });
 
-    pieceList = [new Piece(new Square(5, 0), 'rook', 'red'),
-    new Piece(new Square(1, 2), 'king', 'blue'),
-    new Piece(new Square(2, 5), 'bishop', 'green'),
-    new Piece(new Square(7, 4), 'knight', 'yellow')];
+    pieceList = [{
+        tag: 'Piece',
+        pieceX: 5,
+        pieceY: 2,
+        pieceType: 'Rook',
+        color: 'Red'
+    }, {
+        tag: 'Piece',
+        pieceX: 1,
+        pieceY: 2,
+        pieceType: 'King',
+        color: 'Blue'
+    }, {
+        tag: 'Piece',
+        pieceX: 2,
+        pieceY: 5,
+        pieceType: 'Bishop',
+        color: 'Green'
+    }, {
+        tag: 'Piece',
+        pieceX: 7,
+        pieceY: 4,
+        pieceType: 'Knight',
+        color: 'Yellow'
+    }];
+    //    pieceList = [new Piece(new Square(5, 0), 'rook', 'red'),
+    //    new Piece(new Square(1, 2), 'king', 'blue'),
+    //    new Piece(new Square(2, 5), 'bishop', 'green'),
+    //    new Piece(new Square(7, 4), 'knight', 'yellow')];
 
-    getMoves();
 }
 
 function getMoves() {
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/allmoves?color=Green",
-        success: function(response: MoveJSON[]) {
-            moveList = response.map(moveJsonToMove);
-            myTurn = true;
-        }
+        url: 'http://loka.jakespringer.com:8438/game/2/allmoves?color=Green',
+        success: processMoveList
     })
 }
 
-// Response interfaces
+// Process responses
 
-interface GetStateJSON {
-    actions: ActionJSON[];
-    static: {
-        Left: PieceJSON;
-    }[]
-}
-
-interface ActionJSON {
-    actor: string;
-    move: MoveJSON
-}
-
-interface PieceJSON {
-    pieceX: number;
-    pieceY: number;
-    pieceType: string;
-    color: string;
-}
-
-interface MoveJSON {
-    piece: PieceJSON;
-    tag: string;
-    move?: {
-        direction?: string;
-        distance?: number;
-        knightDirection?: string;
-        tag: string;
+function processGameState(response: JsonGameState) {
+    pieceList = [];
+    for (let pieceOrTerrain of response.static) {
+        if (pieceOrTerrain.Left != undefined) {
+            pieceList.push(pieceOrTerrain.Left);
+        }
     }
+    getMoves();
+}
+
+function processMoveList(response: GameMove[]) {
+    moveList = [];
+    for (let move of response) {
+        if (move.tag === 'AttackPiece' || move.tag === 'MovePiece') {
+            moveList.push(move);
+        }
+    }
+    myTurn = true;
 }
 
 // Utility functions
 
-function pieceJsonToPiece(pieceJson: PieceJSON): Piece {
-    return new Piece(new Square(pieceJson.pieceX, pieceJson.pieceY), pieceJson.pieceType, pieceJson.color);
+function findMoveStartSquare(m: MovePiece | AttackPiece): Square {
+    let p: Piece = m.tag === 'AttackPiece' ? m.attacker : m.piece;
+    return new Square(p.pieceX, p.pieceY);
+}
+function findMoveTargetSquare(m: MovePiece | AttackPiece): Square {
+    let p: Piece = m.tag === 'AttackPiece' ? m.attacker : m.piece;
+    return new Square(p.pieceX, p.pieceY).add(pieceMoveToSquare(p, m.move));
 }
 
-function moveJsonToMove(moveJson: MoveJSON): Move {
-    let s1 = new Square(moveJson.piece.pieceX, moveJson.piece.pieceY);
-    let d = new Square(0, 0);
-    switch (moveJson.piece.pieceType) {
-        case "Knight":
-            d = knightDirectionToSquare(moveJson.move.knightDirection);
-            break;
-        case "Pawn":
-            d = pawnDirectionToSquare(moveJson.piece.color);
-            break;
-        default:
-            d = directionToSquare(moveJson.move.direction).multiply(moveJson.move.distance);
-            break;
-    }
-    return new Move(s1, s1.add(d), moveJson);
+function pieceMoveToSquare(p: Piece, move: PieceMove): Square {
+    if (move.tag === 'PawnMove') return pawnDirectionToSquare(p.color);
+    if (move.tag === 'KnightMove') return knightDirectionToSquare(move.knightDirection);
+    if (move.tag === 'KingMove') return directionToSquare(move.direction);
+    return directionToSquare(move.direction).multiply(move.distance);
 }
 
-function directionToSquare(direction: string): Square {
+function directionToSquare(direction: PieceDirection): Square {
     switch (direction) {
-        case "DirectionRight": return new Square(1, 0);
-        case "DirectionUpRight": return new Square(1, 1);
-        case "DirectionUp": return new Square(0, 1);
-        case "DirectionUpLeft": return new Square(-1, 1);
-        case "DirectionLeft": return new Square(-1, 0);
-        case "DirectionDownLeft": return new Square(-1, -1);
-        case "DirectionDown": return new Square(0, -1);
-        case "DirectionDownRight": return new Square(1, -1);
+        case 'DirectionRight': return new Square(1, 0);
+        case 'DirectionUpRight': return new Square(1, 1);
+        case 'DirectionUp': return new Square(0, 1);
+        case 'DirectionUpLeft': return new Square(-1, 1);
+        case 'DirectionLeft': return new Square(-1, 0);
+        case 'DirectionDownLeft': return new Square(-1, -1);
+        case 'DirectionDown': return new Square(0, -1);
+        case 'DirectionDownRight': return new Square(1, -1);
+        default: return assertNever(direction);
     }
 }
 
-function knightDirectionToSquare(direction: string): Square {
-    switch (direction) {
-        case "KnightDirectionUpRight": return new Square(1, 2);
-        case "KnightDirectionUpLeft": return new Square(-1, 2);
-        case "KnightDirectionDownRight": return new Square(1, -2);
-        case "KnightDirectionDownLeft": return new Square(-1, -2);
-        case "KnightDirectionRightDown": return new Square(2, -1);
-        case "KnightDirectionRightUp": return new Square(2, 1);
-        case "KnightDirectionLeftDown": return new Square(-2, -1);
-        case "KnightDirectionLeftUp": return new Square(-2, 1);
+function knightDirectionToSquare(knightDirection: KnightDirection): Square {
+    switch (knightDirection) {
+        case 'KnightDirectionUpRight': return new Square(1, 2);
+        case 'KnightDirectionUpLeft': return new Square(-1, 2);
+        case 'KnightDirectionDownRight': return new Square(1, -2);
+        case 'KnightDirectionDownLeft': return new Square(-1, -2);
+        case 'KnightDirectionRightDown': return new Square(2, -1);
+        case 'KnightDirectionRightUp': return new Square(2, 1);
+        case 'KnightDirectionLeftDown': return new Square(-2, -1);
+        case 'KnightDirectionLeftUp': return new Square(-2, 1);
+        default: return assertNever(knightDirection);
     }
 }
 
-function pawnDirectionToSquare(color: string): Square {
+function pawnDirectionToSquare(color: PieceColor): Square {
     switch (color) {
-        case "Red": return new Square(0, 1);
-        case "Blue": return new Square(0, -1);
-        case "Green": return new Square(1, 0);
-        case "Yellow": return new Square(-1, 0);
+        case 'Red': return new Square(0, 1);
+        case 'Blue': return new Square(0, -1);
+        case 'Green': return new Square(1, 0);
+        case 'Yellow': return new Square(-1, 0);
+        default: return assertNever(color);
     }
+}
+
+function assertNever(x: never): never {
+    throw new Error('Unexpected object: ' + x);
 }

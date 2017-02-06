@@ -20,22 +20,10 @@ var Color = (function () {
     };
     return Color;
 }());
-var Piece = (function () {
-    function Piece(square, pieceType, team) {
-        this.square = square;
-        this.pieceType = pieceType;
-        this.team = team;
-    }
-    Piece.prototype.toString = function () {
-        return 'Piece{' + this.square + ',' + this.pieceType + '' + this.team + '}';
-    };
-    return Piece;
-}());
 var Square = (function () {
-    function Square(x, y, terrain) {
+    function Square(x, y) {
         this.x = x;
         this.y = y;
-        this.terrain = terrain;
     }
     Square.prototype.add = function (other) {
         return new Square(this.x + other.x, this.y + other.y);
@@ -57,41 +45,13 @@ var Square = (function () {
     };
     return Square;
 }());
-var Move = (function () {
-    function Move(from, to, json) {
-        this.from = from;
-        this.to = to;
-        this.json = json;
-    }
-    Move.prototype.equals = function (other) {
-        return this.from.equals(other.from) && this.to.equals(other.to);
-    };
-    Move.prototype.toString = function () {
-        return 'Move{' + this.from + ',' + this.to + '}';
-    };
-    return Move;
-}());
-var AttackResult = (function () {
-    function AttackResult(attackerDie, defenderDie) {
-        this.attackerDie = attackerDie;
-        this.defenderDie = defenderDie;
-    }
-    return AttackResult;
-}());
-var Die = (function () {
-    function Die(sides, roll) {
-        this.sides = sides;
-        this.roll = roll;
-    }
-    return Die;
-}());
 var sprites = {
-    red: load_colored_images(new Color(.7, 0, 0)),
-    green: load_colored_images(new Color(.3, 1, .3)),
-    blue: load_colored_images(new Color(0, 0, .7)),
-    yellow: load_colored_images(new Color(1, 1, 0))
+    Red: loadColoredImages(new Color(.7, 0, 0)),
+    Green: loadColoredImages(new Color(.6, 1, .6)),
+    Blue: loadColoredImages(new Color(.2, .2, .7)),
+    Yellow: loadColoredImages(new Color(1, 1, .5))
 };
-function load_colored_images(color) {
+function loadColoredImages(color) {
     var obj = {};
     var _loop_1 = function (piece) {
         var image = new Image();
@@ -99,17 +59,10 @@ function load_colored_images(color) {
         image.onload = function () {
             image.onload = function () { };
             tintImage(image, color);
-            //            image
-            //            ctx.save();
-            //            ctx.drawImage(image, 0, 0);
-            //            ctx.globalCompositeOperation = 'multiply';
-            //            ctx.fillStyle = color;
-            //            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            //            ctx.restore();
         };
         obj[piece] = image;
     };
-    for (var _i = 0, _a = ['bishop', 'king', 'knight', 'pawn', 'queen', 'rook']; _i < _a.length; _i++) {
+    for (var _i = 0, _a = ['Bishop', 'King', 'Knight', 'Pawn', 'Queen', 'Rook']; _i < _a.length; _i++) {
         var piece = _a[_i];
         _loop_1(piece);
     }
@@ -133,20 +86,14 @@ function tintImage(imgElement, color) {
     imgElement.src = canvas.toDataURL();
 }
 ///<reference path='images.ts' />
-var canvas = document.createElement("canvas");
+var canvas = document.createElement('canvas');
 document.body.appendChild(canvas);
-var ctx = canvas.getContext("2d");
+var ctx = canvas.getContext('2d');
 // The game state
-var moveList = [];
 var pieceList = [];
-var board = [];
+var terrainList = [];
+var moveList = [];
 var boardSize = 12;
-for (var x = 0; x < boardSize; x++) {
-    board.push([]);
-    for (var y = 0; y < boardSize; y++) {
-        board[x].push(new Square(x, y));
-    }
-}
 var squareSize = getSquareSize();
 var selected = null;
 var selectedOffset = { x: 0, y: 0 };
@@ -154,7 +101,7 @@ var mousePos = { x: 0, y: 0 };
 var myTurn = false;
 getState();
 // Responding to user input
-canvas.addEventListener("mousedown", function (e) {
+canvas.addEventListener('mousedown', function (e) {
     if (myTurn && selected == null) {
         var s = getSquare(e.clientX, e.clientY);
         if (getPieceOnSquare(s) != null) {
@@ -163,17 +110,18 @@ canvas.addEventListener("mousedown", function (e) {
         }
     }
 });
-canvas.addEventListener("mousemove", function (e) {
+canvas.addEventListener('mousemove', function (e) {
     mousePos = { x: e.clientX, y: e.clientY };
 });
-canvas.addEventListener("mouseup", function (e) {
+canvas.addEventListener('mouseup', function (e) {
     if (selected != null) {
         var s = getSquare(e.clientX, e.clientY);
         for (var _i = 0, moveList_1 = moveList; _i < moveList_1.length; _i++) {
             var m = moveList_1[_i];
-            if (m.equals(new Move(selected.square, s))) {
+            if (findMoveStartSquare(m).equals(new Square(selected.pieceX, selected.pieceY))
+                && findMoveTargetSquare(m).equals(s)) {
                 myTurn = false;
-                doAction({ actor: "bob", move: m.json });
+                doAction(m);
                 break;
             }
         }
@@ -191,41 +139,43 @@ function draw() {
             var c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
             ctx.fillStyle = c.toFillStyle();
             ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
-            ctx.fillStyle = "red";
+            ctx.fillStyle = 'red';
             ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
         }
     }
     for (var _i = 0, pieceList_1 = pieceList; _i < pieceList_1.length; _i++) {
         var p = pieceList_1[_i];
         if (p != selected) {
-            ctx.drawImage(sprites[p.team][p.pieceType], p.square.getX(), p.square.getY(), squareSize, squareSize);
+            ctx.drawImage(sprites[p.color][p.pieceType], p.pieceX * squareSize, p.pieceY * squareSize, squareSize, squareSize);
         }
     }
     if (selected != null) {
         for (var _a = 0, moveList_2 = moveList; _a < moveList_2.length; _a++) {
             var m = moveList_2[_a];
-            if (m.from.equals(selected.square)) {
+            if (findMoveStartSquare(m).equals(new Square(selected.pieceX, selected.pieceY))) {
                 ctx.fillStyle = new Color(1, 1, 0, .5).toFillStyle();
-                ctx.fillRect(m.to.x * squareSize, m.to.y * squareSize, squareSize, squareSize);
+                ctx.fillRect(findMoveTargetSquare(m).getX(), findMoveTargetSquare(m).getY(), squareSize, squareSize);
             }
         }
-        ctx.drawImage(sprites[selected.team][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
+        ctx.drawImage(sprites[selected.color][selected.pieceType], mousePos.x - selectedOffset.x, mousePos.y - selectedOffset.y, squareSize, squareSize);
     }
+    ctx.fillStyle = 'red';
+    ctx.fillRect(mousePos.x - 10, mousePos.y - 10, 10, 10);
 }
 // Misc utility functions
 function getSquare(x, y) {
     if (Math.min(x, y) < 0 || Math.max(x, y) >= squareSize * boardSize) {
         return null;
     }
-    return board[Math.floor(x / squareSize)][Math.floor(y / squareSize)];
+    return new Square(Math.floor(x / squareSize), Math.floor(y / squareSize));
 }
 function getSquareSize() {
-    return Math.min(window.innerWidth, window.innerHeight) / 12;
+    return Math.min(canvas.width, canvas.height) / boardSize;
 }
 function getPieceOnSquare(s) {
     for (var _i = 0, pieceList_2 = pieceList; _i < pieceList_2.length; _i++) {
         var p = pieceList_2[_i];
-        if (p.square == s) {
+        if (new Square(p.pieceX, p.pieceY) === s) {
             return p;
         }
     }
@@ -238,93 +188,131 @@ function mainLoop() {
 }
 mainLoop();
 // All the queries that have to go to the server
-function doAction(a) {
+function doAction(m) {
+    var a = { tag: 'JsonAction', actor: 'bob', move: m };
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/doaction",
-        type: "POST",
+        url: 'http://loka.jakespringer.com:8438/game/2/doaction',
+        type: 'POST',
         data: JSON.stringify(a),
-        success: function (response) {
-            pieceList = response.static.map(function (json) {
-                return pieceJsonToPiece(json.Left);
-            });
-            getMoves();
-        }
+        success: processGameState
     });
 }
 function getState() {
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/state",
-        success: function (response) {
-            pieceList = response.static.map(function (json) {
-                return pieceJsonToPiece(json.Left);
-            });
-        }
+        url: 'http://loka.jakespringer.com:8438/game/2/state',
+        success: processGameState
     });
-    pieceList = [new Piece(new Square(5, 0), 'rook', 'red'),
-        new Piece(new Square(1, 2), 'king', 'blue'),
-        new Piece(new Square(2, 5), 'bishop', 'green'),
-        new Piece(new Square(7, 4), 'knight', 'yellow')];
-    getMoves();
+    pieceList = [{
+            tag: 'Piece',
+            pieceX: 5,
+            pieceY: 2,
+            pieceType: 'Rook',
+            color: 'Red'
+        }, {
+            tag: 'Piece',
+            pieceX: 1,
+            pieceY: 2,
+            pieceType: 'King',
+            color: 'Blue'
+        }, {
+            tag: 'Piece',
+            pieceX: 2,
+            pieceY: 5,
+            pieceType: 'Bishop',
+            color: 'Green'
+        }, {
+            tag: 'Piece',
+            pieceX: 7,
+            pieceY: 4,
+            pieceType: 'Knight',
+            color: 'Yellow'
+        }];
+    //    pieceList = [new Piece(new Square(5, 0), 'rook', 'red'),
+    //    new Piece(new Square(1, 2), 'king', 'blue'),
+    //    new Piece(new Square(2, 5), 'bishop', 'green'),
+    //    new Piece(new Square(7, 4), 'knight', 'yellow')];
 }
 function getMoves() {
     $.ajax({
-        url: "http://loka.jakespringer.com:8438/game/2/allmoves?color=Green",
-        success: function (response) {
-            moveList = response.map(moveJsonToMove);
-            myTurn = true;
-        }
+        url: 'http://loka.jakespringer.com:8438/game/2/allmoves?color=Green',
+        success: processMoveList
     });
 }
-// Utility functions
-function pieceJsonToPiece(pieceJson) {
-    return new Piece(new Square(pieceJson.pieceX, pieceJson.pieceY), pieceJson.pieceType, pieceJson.color);
-}
-function moveJsonToMove(moveJson) {
-    var s1 = new Square(moveJson.piece.pieceX, moveJson.piece.pieceY);
-    var d = new Square(0, 0);
-    switch (moveJson.piece.pieceType) {
-        case "Knight":
-            d = knightDirectionToSquare(moveJson.move.knightDirection);
-            break;
-        case "Pawn":
-            d = pawnDirectionToSquare(moveJson.piece.color);
-            break;
-        default:
-            d = directionToSquare(moveJson.move.direction).multiply(moveJson.move.distance);
-            break;
+// Process responses
+function processGameState(response) {
+    pieceList = [];
+    for (var _i = 0, _a = response.static; _i < _a.length; _i++) {
+        var pieceOrTerrain = _a[_i];
+        if (pieceOrTerrain.Left != undefined) {
+            pieceList.push(pieceOrTerrain.Left);
+        }
     }
-    return new Move(s1, s1.add(d), moveJson);
+    getMoves();
+}
+function processMoveList(response) {
+    moveList = [];
+    for (var _i = 0, response_1 = response; _i < response_1.length; _i++) {
+        var move = response_1[_i];
+        if (move.tag === 'AttackPiece' || move.tag === 'MovePiece') {
+            moveList.push(move);
+        }
+    }
+    myTurn = true;
+}
+// Utility functions
+function findMoveStartSquare(m) {
+    var p = m.tag === 'AttackPiece' ? m.attacker : m.piece;
+    return new Square(p.pieceX, p.pieceY);
+}
+function findMoveTargetSquare(m) {
+    var p = m.tag === 'AttackPiece' ? m.attacker : m.piece;
+    return new Square(p.pieceX, p.pieceY).add(pieceMoveToSquare(p, m.move));
+}
+function pieceMoveToSquare(p, move) {
+    if (move.tag === 'PawnMove')
+        return pawnDirectionToSquare(p.color);
+    if (move.tag === 'KnightMove')
+        return knightDirectionToSquare(move.knightDirection);
+    if (move.tag === 'KingMove')
+        return directionToSquare(move.direction);
+    return directionToSquare(move.direction).multiply(move.distance);
 }
 function directionToSquare(direction) {
     switch (direction) {
-        case "DirectionRight": return new Square(1, 0);
-        case "DirectionUpRight": return new Square(1, 1);
-        case "DirectionUp": return new Square(0, 1);
-        case "DirectionUpLeft": return new Square(-1, 1);
-        case "DirectionLeft": return new Square(-1, 0);
-        case "DirectionDownLeft": return new Square(-1, -1);
-        case "DirectionDown": return new Square(0, -1);
-        case "DirectionDownRight": return new Square(1, -1);
+        case 'DirectionRight': return new Square(1, 0);
+        case 'DirectionUpRight': return new Square(1, 1);
+        case 'DirectionUp': return new Square(0, 1);
+        case 'DirectionUpLeft': return new Square(-1, 1);
+        case 'DirectionLeft': return new Square(-1, 0);
+        case 'DirectionDownLeft': return new Square(-1, -1);
+        case 'DirectionDown': return new Square(0, -1);
+        case 'DirectionDownRight': return new Square(1, -1);
+        default: return assertNever(direction);
     }
 }
-function knightDirectionToSquare(direction) {
-    switch (direction) {
-        case "KnightDirectionUpRight": return new Square(1, 2);
-        case "KnightDirectionUpLeft": return new Square(-1, 2);
-        case "KnightDirectionDownRight": return new Square(1, -2);
-        case "KnightDirectionDownLeft": return new Square(-1, -2);
-        case "KnightDirectionRightDown": return new Square(2, -1);
-        case "KnightDirectionRightUp": return new Square(2, 1);
-        case "KnightDirectionLeftDown": return new Square(-2, -1);
-        case "KnightDirectionLeftUp": return new Square(-2, 1);
+function knightDirectionToSquare(knightDirection) {
+    switch (knightDirection) {
+        case 'KnightDirectionUpRight': return new Square(1, 2);
+        case 'KnightDirectionUpLeft': return new Square(-1, 2);
+        case 'KnightDirectionDownRight': return new Square(1, -2);
+        case 'KnightDirectionDownLeft': return new Square(-1, -2);
+        case 'KnightDirectionRightDown': return new Square(2, -1);
+        case 'KnightDirectionRightUp': return new Square(2, 1);
+        case 'KnightDirectionLeftDown': return new Square(-2, -1);
+        case 'KnightDirectionLeftUp': return new Square(-2, 1);
+        default: return assertNever(knightDirection);
     }
 }
 function pawnDirectionToSquare(color) {
     switch (color) {
-        case "Red": return new Square(0, 1);
-        case "Blue": return new Square(0, -1);
-        case "Green": return new Square(1, 0);
-        case "Yellow": return new Square(-1, 0);
+        case 'Red': return new Square(0, 1);
+        case 'Blue': return new Square(0, -1);
+        case 'Green': return new Square(1, 0);
+        case 'Yellow': return new Square(-1, 0);
+        default: return assertNever(color);
     }
+}
+function assertNever(x) {
+    throw new Error('Unexpected object: ' + x);
 }
 //# sourceMappingURL=loka.js.map
