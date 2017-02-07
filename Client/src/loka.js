@@ -175,7 +175,7 @@ function getSquareSize() {
 function getPieceOnSquare(s) {
     for (var _i = 0, pieceList_2 = pieceList; _i < pieceList_2.length; _i++) {
         var p = pieceList_2[_i];
-        if (new Square(p.pieceX, p.pieceY) === s) {
+        if (new Square(p.pieceX, p.pieceY).equals(s)) {
             return p;
         }
     }

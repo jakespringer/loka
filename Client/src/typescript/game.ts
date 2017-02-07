@@ -107,7 +107,7 @@ function getSquareSize(): number {
 
 function getPieceOnSquare(s: Square): Piece {
     for (let p of pieceList) {
-        if (new Square(p.pieceX, p.pieceY) === s) {
+        if (new Square(p.pieceX, p.pieceY).equals(s)) {
             return p;
         }
     }
