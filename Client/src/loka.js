@@ -136,11 +136,17 @@ function draw() {
     squareSize = getSquareSize();
     for (var x = 0; x < boardSize; x++) {
         for (var y = 0; y < boardSize; y++) {
-            var c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
-            ctx.fillStyle = c.toFillStyle();
-            ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
-            ctx.fillStyle = 'red';
-            ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
+            if (x >= 3 && x < 9 || y >= 3 && y < 9) {
+                var c = (x % 2 + y % 2 == 1) ? new Color(.9, .9, .9) : new Color(.2, .2, .2);
+                ctx.fillStyle = c.toFillStyle();
+                ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+                ctx.fillStyle = 'red';
+                ctx.fillText(x + ' ' + y, x * squareSize, (y + 1) * squareSize);
+            }
+            else {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+            }
         }
     }
     for (var _i = 0, pieceList_1 = pieceList; _i < pieceList_1.length; _i++) {
